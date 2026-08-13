@@ -4,14 +4,22 @@ import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 
-async function render() {
+async function render({ authenticated = true } = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
+  const requestHeaders = { accept: "text/html" };
+  if (authenticated) {
+    requestHeaders["oai-authenticated-user-id"] = "test-user-123";
+    requestHeaders["oai-authenticated-user-email"] = "andrea@example.com";
+    requestHeaders["oai-authenticated-user-full-name"] = "Andrea%20Test";
+    requestHeaders["oai-authenticated-user-full-name-encoding"] = "percent-encoded-utf-8";
+  }
+
   return worker.fetch(
     new Request("http://localhost/", {
-      headers: { accept: "text/html" },
+      headers: requestHeaders,
     }),
     {
       ASSETS: {
@@ -36,7 +44,16 @@ test("server-renders the CRA24 product workspace", async () => {
   assert.match(html, /CVE-2026-48312/);
   assert.match(html, /Seriali monitorati/);
   assert.match(html, /CRA Article 14/);
+  assert.match(html, /Andrea Test/);
+  assert.match(html, /andrea@example\.com/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+});
+
+test("redirects anonymous visitors to the platform sign-in flow", async () => {
+  const response = await render({ authenticated: false });
+  assert.ok([302, 303, 307, 308].includes(response.status));
+  assert.match(response.headers.get("location") ?? "", /signin-with-chatgpt/);
+  assert.match(response.headers.get("location") ?? "", /return_to/);
 });
 
 test("ships finished metadata and removes disposable preview code", async () => {
@@ -48,6 +65,7 @@ test("ships finished metadata and removes disposable preview code", async () => 
   ]);
 
   assert.match(page, /CRA24App/);
+  assert.match(page, /requireChatGPTUser/);
   assert.match(layout, /Product Security Operations/);
   assert.match(app, /Importa seriali/);
   assert.match(app, /Genera dossier/);

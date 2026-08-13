@@ -190,7 +190,19 @@ function statusClass(value: string) {
   return value.toLowerCase().replaceAll(" ", "-").replaceAll("à", "a");
 }
 
-export function CRA24App() {
+function initialsFor(value: string) {
+  const base = value.includes("@") ? value.split("@")[0] : value;
+  const parts = base.trim().split(/[._\s-]+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : base.slice(0, 2)).toUpperCase();
+}
+
+export function CRA24App({
+  currentUser,
+  signOutPath,
+}: {
+  currentUser: { displayName: string; email: string };
+  signOutPath: string;
+}) {
   const [view, setView] = useState<View>("overview");
   const [incidents, setIncidents] = useState(initialIncidents);
   const [assets, setAssets] = useState(initialAssets);
@@ -202,6 +214,7 @@ export function CRA24App() {
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+  const currentUserInitials = initialsFor(currentUser.displayName);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -390,8 +403,8 @@ export function CRA24App() {
         </div>
 
         <div className="sidebar-user">
-          <span className="user-avatar">LB</span>
-          <span><strong>Laura Bianchi</strong><small>Product Security Lead</small></span>
+          <span className="user-avatar">{currentUserInitials}</span>
+          <span><strong>{currentUser.displayName}</strong><small>Utente autenticato</small></span>
           <button aria-label="Impostazioni profilo" onClick={() => setProfileOpen((open) => !open)}><ChevronRight size={16} /></button>
         </div>
       </aside>
@@ -412,12 +425,14 @@ export function CRA24App() {
           <div className="top-actions">
             <span className="sync-state"><span /> Dati sincronizzati</span>
             <button className="icon-button" aria-label="Notifiche"><Bell size={18} /><i /></button>
-            <button className="top-avatar" onClick={() => setProfileOpen((open) => !open)}>LB</button>
+            <button className="top-avatar" onClick={() => setProfileOpen((open) => !open)} aria-label="Apri profilo">{currentUserInitials}</button>
           </div>
           {profileOpen && (
             <div className="profile-popover">
-              <strong>Laura Bianchi</strong><span>laura@asterpackaging.eu</span>
+              <div className="profile-identity"><span>{currentUserInitials}</span><div><strong>{currentUser.displayName}</strong><small>{currentUser.email}</small></div></div>
+              <em><CheckCircle2 size={13} /> Accesso verificato con ChatGPT</em>
               <button onClick={() => { navigate("settings"); setProfileOpen(false); }}>Impostazioni workspace</button>
+              <a href={signOutPath}>Esci dall&apos;account</a>
             </div>
           )}
         </header>

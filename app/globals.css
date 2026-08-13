@@ -97,9 +97,15 @@ button, select { cursor: pointer; }
 .icon-button i { width: 5px; height: 5px; background: #e34e43; border-radius: 50%; position: absolute; top: 7px; right: 7px; box-shadow: 0 0 0 2px #fff; }
 .top-avatar { cursor: pointer; }
 .profile-popover { position: absolute; right: 29px; top: 56px; width: 220px; background: #fff; border: 1px solid var(--line); border-radius: 11px; box-shadow: 0 16px 40px rgba(16,24,40,.13); padding: 13px; display: flex; flex-direction: column; z-index: 40; }
-.profile-popover strong { font-size: 12px; }
-.profile-popover span { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.profile-identity { display: flex; align-items: center; gap: 9px; }
+.profile-identity > span { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; background: #e4ecf8; color: #2c527f; font-size: 9px; font-weight: 750; }
+.profile-identity > div { min-width: 0; display: flex; flex-direction: column; }
+.profile-popover strong { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-popover small { font-size: 8px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-popover > em { margin-top: 11px; padding: 7px 8px; display: flex; align-items: center; gap: 5px; border-radius: 7px; background: var(--green-soft); color: var(--green); font-size: 8px; font-style: normal; font-weight: 600; }
 .profile-popover button { border: 0; background: #f5f6f8; border-radius: 7px; margin-top: 12px; padding: 9px; font-size: 10px; text-align: left; }
+.profile-popover > a { color: #a5423b; font-size: 9px; text-decoration: none; padding: 9px 2px 2px; }
+.profile-popover > a:hover { text-decoration: underline; }
 
 .page-content { max-width: 1470px; margin: 0 auto; padding: 32px 34px 48px; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 23px; }
