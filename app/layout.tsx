@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cra24-product-security.andreagadducci.chatgpt.site"),
   title: "CRA24 — Product Security Operations",
   description:
     "Individua i prodotti e i clienti coinvolti da una vulnerabilità, coordina la risposta e conserva ogni evidenza.",
