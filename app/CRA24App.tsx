@@ -40,6 +40,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 type View =
@@ -263,27 +264,34 @@ export function CRA24App({
   const [demoStep, setDemoStep] = useState<number | null>(null);
   const [demoCompleteOpen, setDemoCompleteOpen] = useState(false);
   const [demoActions, setDemoActions] = useState<Record<number, boolean>>({});
+  const [storageReady, setStorageReady] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const currentUserInitials = initialsFor(currentUser.displayName);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const savedIncidents = localStorage.getItem("cra24-incidents");
-      const savedAssets = localStorage.getItem("cra24-assets");
-      if (savedIncidents) setIncidents(JSON.parse(savedIncidents));
-      if (savedAssets) setAssets(JSON.parse(savedAssets));
-      if (!localStorage.getItem("cra24-guided-demo-v1-seen")) setDemoWelcomeOpen(true);
+      try {
+        const savedIncidents = sessionStorage.getItem("cra24-incidents");
+        const savedAssets = sessionStorage.getItem("cra24-assets");
+        if (savedIncidents) setIncidents(JSON.parse(savedIncidents));
+        if (savedAssets) setAssets(JSON.parse(savedAssets));
+        if (!sessionStorage.getItem("cra24-guided-demo-v1-seen")) setDemoWelcomeOpen(true);
+      } catch {
+        setDemoWelcomeOpen(true);
+      } finally {
+        setStorageReady(true);
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("cra24-incidents", JSON.stringify(incidents));
-  }, [incidents]);
+    if (storageReady) sessionStorage.setItem("cra24-incidents", JSON.stringify(incidents));
+  }, [incidents, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem("cra24-assets", JSON.stringify(assets));
-  }, [assets]);
+    if (storageReady) sessionStorage.setItem("cra24-assets", JSON.stringify(assets));
+  }, [assets, storageReady]);
 
   useEffect(() => {
     if (!toast) return;
@@ -312,7 +320,7 @@ export function CRA24App({
   }
 
   function startDemo() {
-    localStorage.setItem("cra24-guided-demo-v1-seen", "true");
+    sessionStorage.setItem("cra24-guided-demo-v1-seen", "true");
     setIncidents(initialIncidents.map((incident) => ({ ...incident })));
     setAssets(initialAssets.map((asset) => ({ ...asset, selected: false })));
     setDemoActions({});
@@ -326,7 +334,7 @@ export function CRA24App({
   }
 
   function exploreFreely() {
-    localStorage.setItem("cra24-guided-demo-v1-seen", "true");
+    sessionStorage.setItem("cra24-guided-demo-v1-seen", "true");
     setDemoWelcomeOpen(false);
     setDemoStep(null);
   }
@@ -480,7 +488,7 @@ export function CRA24App({
       <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
         <div className="brand-row">
           <div className="brand-mark"><ShieldCheck size={19} strokeWidth={2.25} /></div>
-          <div><strong>CRA<span>24</span></strong><small>Product Security Ops</small></div>
+          <div><strong>CRA<span>24</span></strong><small>Product Security Ops <em>· by Kreluna</em></small></div>
           <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Chiudi menu"><X size={18} /></button>
         </div>
 
@@ -534,6 +542,7 @@ export function CRA24App({
             <kbd>⌘ K</kbd>
           </label>
           <div className="top-actions">
+            <Link className="site-return" href="/">Sito CRA24</Link>
             <button className="demo-launch" onClick={startDemo}><Play size={14} fill="currentColor" /><span>Demo guidata</span></button>
             <span className="sync-state demo-data-state"><Database size={13} /> Dataset dimostrativo</span>
             <button className="icon-button" aria-label="Notifiche"><Bell size={18} /><i /></button>

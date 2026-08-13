@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,25 +13,44 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://cra24-product-security.andreagadducci.chatgpt.site"),
-  title: "CRA24 — Product Security Operations",
-  description:
-    "Individua i prodotti e i clienti coinvolti da una vulnerabilità, coordina la risposta e conserva ogni evidenza.",
-  openGraph: {
-    title: "CRA24 — Product Security Operations",
-    description: "Dalla vulnerabilità ai seriali coinvolti.",
-    type: "website",
-    locale: "it_IT",
-    images: [{ url: "/og.png", width: 1536, height: 1024, alt: "CRA24 Product Security Operations" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "CRA24 — Product Security Operations",
-    description: "Dalla vulnerabilità ai seriali coinvolti.",
-    images: ["/og.png"],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const requestHost = forwardedHost ?? requestHeaders.get("host") ?? "cra24.kreluna.it";
+  const safeHost = /^[a-z0-9.-]+(?::\d+)?$/i.test(requestHost) ? requestHost : "cra24.kreluna.it";
+  const forwardedProtocol = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol === "http" || forwardedProtocol === "https"
+    ? forwardedProtocol
+    : safeHost.includes("localhost")
+      ? "http"
+      : "https";
+  const metadataBase = new URL(`${protocol}://${safeHost}`);
+  const socialImage = new URL("/og.png", metadataBase).toString();
+
+  return {
+    metadataBase,
+    title: {
+      default: "CRA24 — Product Security Operations, by Kreluna",
+      template: "%s · CRA24",
+    },
+    description:
+      "Dalla vulnerabilità alle macchine coinvolte: impatto, risposta ed evidenze in un unico spazio operativo.",
+    openGraph: {
+      title: "CRA24 — Product Security Operations",
+      description: "Dalla vulnerabilità alle macchine coinvolte, prima che scadano le prime 24 ore.",
+      type: "website",
+      locale: "it_IT",
+      siteName: "CRA24 by Kreluna",
+      images: [{ url: socialImage, width: 1586, height: 992, alt: "CRA24 Product Security Operations, by Kreluna" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "CRA24 — Product Security Operations",
+      description: "Dalla vulnerabilità alle macchine coinvolte, prima che scadano le prime 24 ore.",
+      images: [socialImage],
+    },
+  };
+}
 
 export default function RootLayout({
   children,

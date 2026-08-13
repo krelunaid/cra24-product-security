@@ -1,0 +1,2 @@
+CREATE INDEX `idx_beta_requests_email_created` ON `beta_requests` (`email`,`created_at`);--> statement-breakpoint
+CREATE INDEX `idx_beta_requests_status_created` ON `beta_requests` (`status`,`created_at`);
