@@ -243,9 +243,11 @@ function initialsFor(value: string) {
 export function CRA24App({
   currentUser,
   signOutPath,
+  isAuthenticated,
 }: {
   currentUser: { displayName: string; email: string };
-  signOutPath: string;
+  signOutPath?: string;
+  isAuthenticated: boolean;
 }) {
   const [view, setView] = useState<View>("overview");
   const [incidents, setIncidents] = useState(initialIncidents);
@@ -513,7 +515,7 @@ export function CRA24App({
 
         <div className="sidebar-user">
           <span className="user-avatar">{currentUserInitials}</span>
-          <span><strong>{currentUser.displayName}</strong><small>Utente autenticato</small></span>
+          <span><strong>{currentUser.displayName}</strong><small>{isAuthenticated ? "Utente autenticato" : "Accesso pubblico"}</small></span>
           <button aria-label="Impostazioni profilo" onClick={() => setProfileOpen((open) => !open)}><ChevronRight size={16} /></button>
         </div>
       </aside>
@@ -540,9 +542,9 @@ export function CRA24App({
           {profileOpen && (
             <div className="profile-popover">
               <div className="profile-identity"><span>{currentUserInitials}</span><div><strong>{currentUser.displayName}</strong><small>{currentUser.email}</small></div></div>
-              <em><CheckCircle2 size={13} /> Accesso verificato con ChatGPT</em>
+              <em><CheckCircle2 size={13} /> {isAuthenticated ? "Accesso verificato con ChatGPT" : "Demo pubblica · nessun login"}</em>
               <button onClick={() => { navigate("settings"); setProfileOpen(false); }}>Impostazioni workspace</button>
-              <a href={signOutPath}>Esci dall&apos;account</a>
+              {signOutPath && <a href={signOutPath}>Esci dall&apos;account</a>}
             </div>
           )}
         </header>

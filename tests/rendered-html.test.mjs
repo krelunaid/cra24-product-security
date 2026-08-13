@@ -51,11 +51,14 @@ test("server-renders the CRA24 product workspace", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
-test("redirects anonymous visitors to the platform sign-in flow", async () => {
+test("lets anonymous prospects open the public demo without signing in", async () => {
   const response = await render({ authenticated: false });
-  assert.ok([302, 303, 307, 308].includes(response.status));
-  assert.match(response.headers.get("location") ?? "", /signin-with-chatgpt/);
-  assert.match(response.headers.get("location") ?? "", /return_to/);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Visitatore demo/);
+  assert.match(html, /Accesso pubblico/);
+  assert.match(html, /Nessun account richiesto/);
+  assert.doesNotMatch(html, /Esci dall.account/);
 });
 
 test("ships finished metadata and removes disposable preview code", async () => {
@@ -67,7 +70,7 @@ test("ships finished metadata and removes disposable preview code", async () => 
   ]);
 
   assert.match(page, /CRA24App/);
-  assert.match(page, /requireChatGPTUser/);
+  assert.match(page, /getChatGPTUser/);
   assert.match(layout, /Product Security Operations/);
   assert.match(app, /Demo guidata/);
   assert.match(app, /Importa CSV locale/);

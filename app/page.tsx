@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CRA24App } from "./CRA24App";
-import { chatGPTSignOutPath, requireChatGPTUser } from "./chatgpt-auth";
+import { chatGPTSignOutPath, getChatGPTUser } from "./chatgpt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const user = await requireChatGPTUser("/");
+  const user = await getChatGPTUser();
 
   return (
     <CRA24App
       currentUser={{
-        displayName: user.displayName,
-        email: user.email,
+        displayName: user?.displayName ?? "Visitatore demo",
+        email: user?.email ?? "Nessun account richiesto",
       }}
-      signOutPath={chatGPTSignOutPath("/")}
+      signOutPath={user ? chatGPTSignOutPath("/") : undefined}
+      isAuthenticated={Boolean(user)}
     />
   );
 }
