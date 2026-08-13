@@ -12,7 +12,9 @@ import {
   ChevronRight,
   CircleDot,
   Clock3,
+  Database,
   Download,
+  Eye,
   FileCheck2,
   FileText,
   Gauge,
@@ -21,9 +23,12 @@ import {
   LayoutDashboard,
   Link2,
   ListFilter,
+  Mail,
   Menu,
   PackageCheck,
+  Play,
   Plus,
+  RotateCcw,
   Search,
   ServerCog,
   Settings,
@@ -138,7 +143,7 @@ const initialIncidents: Incident[] = [
     owner: "Paolo Neri",
     progress: 100,
     summary:
-      "Aggiornamento firmware distribuito e validato su tutti i seriali interessati. Dossier di chiusura firmato.",
+      "Scenario concluso: aggiornamento firmware simulato su tutti i seriali interessati. Esempio di dossier disponibile.",
   },
 ];
 
@@ -157,15 +162,15 @@ const components = [
   { name: "HMI Connect Pro", supplier: "VisuTech", version: "4.8.3", products: 3, serials: 127, health: "Azione richiesta" },
   { name: "RemoteLink Gateway", supplier: "NexBridge", version: "2.1.7", products: 2, serials: 48, health: "Da verificare" },
   { name: "EdgeCore IPC", supplier: "Industrial Edge", version: "OS 7.3", products: 4, serials: 214, health: "Monitoraggio" },
-  { name: "MotionPLC Runtime", supplier: "Motronix", version: "11.2.5", products: 5, serials: 486, health: "Protetto" },
-  { name: "SafeMotion Library", supplier: "Internal", version: "3.7.1", products: 6, serials: 812, health: "Protetto" },
+  { name: "MotionPLC Runtime", supplier: "Motronix", version: "11.2.5", products: 5, serials: 486, health: "Nessun alert demo" },
+  { name: "SafeMotion Library", supplier: "Internal", version: "3.7.1", products: 6, serials: 812, health: "Nessun alert demo" },
 ];
 
 const reportRows = [
   { title: "Early warning — CVE-2026-48312", type: "CRA 24h", date: "13 ago 2026", state: "Bozza", owner: "Laura Bianchi" },
   { title: "Impact assessment — HMI Connect", type: "Impatto", date: "13 ago 2026", state: "In revisione", owner: "Marco Riva" },
-  { title: "Dossier chiusura — CVE-2026-39211", type: "Finale", date: "02 ago 2026", state: "Firmato", owner: "Paolo Neri" },
-  { title: "Registro incidenti — Q2 2026", type: "Registro", date: "30 giu 2026", state: "Firmato", owner: "Elena Conti" },
+  { title: "Dossier chiusura — CVE-2026-39211", type: "Esempio finale", date: "02 ago 2026", state: "Esempio", owner: "Paolo Neri" },
+  { title: "Registro incidenti — Q2 2026", type: "Esempio registro", date: "30 giu 2026", state: "Esempio", owner: "Elena Conti" },
 ];
 
 const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
@@ -175,6 +180,45 @@ const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "components", label: "Componenti", icon: ServerCog },
   { id: "reports", label: "Dossier & report", icon: FileCheck2 },
 ];
+
+const demoSteps = [
+  {
+    eyebrow: "1 · Segnale",
+    title: "Parti da una vulnerabilità critica",
+    copy: "Il caso dimostrativo riguarda un componente HMI vulnerabile. Osserva severità, versioni interessate e finestre operative 24/72 ore.",
+    observe: "CRA24 non decide da solo: apre il caso e rende visibili urgenza, fonte e informazioni ancora da verificare.",
+  },
+  {
+    eyebrow: "2 · Impatto",
+    title: "Segui il collegamento fino al prodotto",
+    copy: "L'impact graph collega CVE, componente, release di macchina, seriali e clienti potenzialmente coinvolti.",
+    observe: "Il valore non è la CVE in sé, ma sapere dove quel componente è installato e con quale configurazione.",
+  },
+  {
+    eyebrow: "3 · Priorità",
+    title: "Distingui i seriali realmente esposti",
+    copy: "Confronta macchine raggiungibili da remoto, accessibili via VPN e non esposte. Ogni riga conserva cliente, sito, release e stato operativo.",
+    observe: "La demo usa dati fittizi. In un pilot queste informazioni arriverebbero da export ERP, PLM, CRM o file concordati.",
+  },
+  {
+    eyebrow: "4 · Risposta",
+    title: "Assegna il lavoro e controlla l'avanzamento",
+    copy: "Il response plan separa rilevazione, mappatura, triage, notifica e remediation, mantenendo un responsabile umano per ogni decisione.",
+    observe: "Nessuna comunicazione viene inviata automaticamente e nessun esito diventa definitivo senza revisione.",
+  },
+  {
+    eyebrow: "5 · Evidenze",
+    title: "Ricostruisci chi ha fatto cosa",
+    copy: "La timeline mostra origine dell'advisory, completamento dell'impact graph, assegnazione del triage e contatto con il fornitore.",
+    observe: "Questo registro è la base del dossier: fatti, responsabilità e decisioni restano separati dalle ipotesi.",
+  },
+  {
+    eyebrow: "6 · Dossier",
+    title: "Ottieni un risultato verificabile",
+    copy: "La sezione finale raccoglie early warning, impact assessment, registro e dossier di chiusura in forma dimostrativa.",
+    observe: "I documenti della beta non sono certificati, firmati o inviati alle autorità. Servono a validare struttura e workflow.",
+  },
+] as const;
 
 function downloadFile(name: string, content: string, type = "application/json") {
   const blob = new Blob([content], { type });
@@ -213,6 +257,10 @@ export function CRA24App({
   const [newIncidentOpen, setNewIncidentOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [demoWelcomeOpen, setDemoWelcomeOpen] = useState(false);
+  const [demoStep, setDemoStep] = useState<number | null>(null);
+  const [demoCompleteOpen, setDemoCompleteOpen] = useState(false);
+  const [demoActions, setDemoActions] = useState<Record<number, boolean>>({});
   const importRef = useRef<HTMLInputElement>(null);
   const currentUserInitials = initialsFor(currentUser.displayName);
 
@@ -222,6 +270,7 @@ export function CRA24App({
       const savedAssets = localStorage.getItem("cra24-assets");
       if (savedIncidents) setIncidents(JSON.parse(savedIncidents));
       if (savedAssets) setAssets(JSON.parse(savedAssets));
+      if (!localStorage.getItem("cra24-guided-demo-v1-seen")) setDemoWelcomeOpen(true);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -260,11 +309,69 @@ export function CRA24App({
     setToast(message);
   }
 
+  function startDemo() {
+    localStorage.setItem("cra24-guided-demo-v1-seen", "true");
+    setIncidents(initialIncidents.map((incident) => ({ ...incident })));
+    setAssets(initialAssets.map((asset) => ({ ...asset, selected: false })));
+    setDemoActions({});
+    setDemoWelcomeOpen(false);
+    setDemoCompleteOpen(false);
+    setActiveIncidentId(1);
+    setView("overview");
+    setIncidentTab("impact");
+    setDemoStep(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function exploreFreely() {
+    localStorage.setItem("cra24-guided-demo-v1-seen", "true");
+    setDemoWelcomeOpen(false);
+    setDemoStep(null);
+  }
+
+  function moveDemo(next: number) {
+    if (next < 0) return;
+    if (next >= demoSteps.length) {
+      setDemoStep(null);
+      setDemoCompleteOpen(true);
+      return;
+    }
+
+    setDemoStep(next);
+    if (next === 0 || next === 1) {
+      setView("overview");
+      setIncidentTab("impact");
+    } else if (next === 2 || next === 3) {
+      setView("overview");
+      setIncidentTab("assets");
+    } else if (next === 4) {
+      setView("overview");
+      setIncidentTab("timeline");
+    } else {
+      setView("reports");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function performDemoAction() {
+    if (demoStep === 2) {
+      setAssets((current) => current.map((asset) => ({ ...asset, selected: asset.id === "PKG-24-01874" })));
+      setDemoActions((current) => ({ ...current, 2: true }));
+      notify("PKG-24-01874 selezionato nello scenario demo");
+    }
+    if (demoStep === 3) {
+      setAssets((current) => current.map((asset) => asset.id === "PKG-24-01874" ? { ...asset, selected: false, status: "Patch pianificata" } : asset));
+      setIncidents((current) => current.map((incident) => incident.id === 1 ? { ...incident, progress: 72 } : incident));
+      setDemoActions((current) => ({ ...current, 3: true }));
+      notify("Pianificazione registrata solo nella sessione demo");
+    }
+  }
+
   function updateIncidentStatus(status: Incident["status"], progress: number) {
     setIncidents((current) =>
       current.map((incident) => (incident.id === activeIncident.id ? { ...incident, status, progress } : incident)),
     );
-    notify(status === "Chiuso" ? "Incidente chiuso e dossier aggiornato" : "Stato dell'incidente aggiornato");
+    notify(status === "Chiuso" ? "Chiusura simulata e dossier demo aggiornato" : "Stato aggiornato nella sessione demo");
   }
 
   function patchSelected() {
@@ -283,13 +390,15 @@ export function CRA24App({
   function exportIncident() {
     const payload = {
       generatedAt: new Date().toISOString(),
+      demo: true,
+      disclaimer: "DEMO — dati fittizi — non certificato — non inviato",
       regulatoryWorkflow: "CRA Article 14 readiness",
       incident: activeIncident,
       affectedAssets: assets.filter((asset) => asset.status !== "Non esposto"),
       evidenceStatus: "Human review required before submission",
     };
-    downloadFile(`CRA24-${activeIncident.cve}-dossier.json`, JSON.stringify(payload, null, 2));
-    notify("Dossier esportato. Revisione umana richiesta prima dell'invio.");
+    downloadFile(`CRA24-DEMO-${activeIncident.cve}-dossier.json`, JSON.stringify(payload, null, 2));
+    notify("Dossier demo esportato: non certificato e non inviato");
   }
 
   function exportAssets() {
@@ -297,8 +406,8 @@ export function CRA24App({
       ["Seriale", "Modello", "Cliente", "Sito", "Release", "Esposizione", "Stato"],
       ...filteredAssets.map((asset) => [asset.id, asset.model, asset.customer, asset.site, asset.release, asset.exposure, asset.status]),
     ];
-    downloadFile("CRA24-parco-installato.csv", rows.map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n"), "text/csv");
-    notify("Parco installato esportato in CSV");
+    downloadFile("CRA24-DEMO-parco-installato.csv", rows.map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n"), "text/csv");
+    notify("CSV demo esportato: contiene soltanto dati fittizi");
   }
 
   function importCsv(file?: File) {
@@ -324,7 +433,7 @@ export function CRA24App({
         return;
       }
       setAssets((current) => [...imported, ...current]);
-      notify(`${imported.length} seriali importati e messi in verifica`);
+      notify(`${imported.length} seriali importati nella sola sessione locale`);
     };
     reader.readAsText(file);
   }
@@ -351,7 +460,7 @@ export function CRA24App({
     setActiveIncidentId(next.id);
     setView("overview");
     setNewIncidentOpen(false);
-    notify("Incident room creata. Il timer CRA è stato avviato.");
+    notify("Incident room demo creata. Nessun timer o invio reale è stato avviato.");
   }
 
   const viewTitle = {
@@ -365,7 +474,7 @@ export function CRA24App({
   }[view];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${demoStep !== null ? "demo-mode" : ""}`}>
       <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
         <div className="brand-row">
           <div className="brand-mark"><ShieldCheck size={19} strokeWidth={2.25} /></div>
@@ -373,9 +482,9 @@ export function CRA24App({
           <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Chiudi menu"><X size={18} /></button>
         </div>
 
-        <button className="workspace-switcher">
+        <button className="workspace-switcher" title="Scenario interamente dimostrativo">
           <span className="workspace-avatar">AP</span>
-          <span><small>Workspace</small><strong>Aster Packaging</strong></span>
+          <span><small>Scenario demo</small><strong>Aster Packaging · fittizia</strong></span>
           <ChevronDown size={15} />
         </button>
 
@@ -396,10 +505,10 @@ export function CRA24App({
         </nav>
 
         <div className="sidebar-deadline">
-          <div className="deadline-top"><span><Clock3 size={15} /> CRA reporting</span><em>29 giorni</em></div>
+          <div className="deadline-top"><span><Clock3 size={15} /> CRA reporting</span><em>Scenario</em></div>
           <div className="deadline-track"><span /></div>
-          <p>Il workflow di segnalazione entra in funzione l&apos;11 settembre 2026.</p>
-          <button onClick={() => navigate("reports")}>Verifica preparazione <ArrowRight size={14} /></button>
+          <p>Esempio del workflow applicabile dall&apos;11 settembre 2026. Nessun timer reale è attivo.</p>
+          <button onClick={() => navigate("reports")}>Apri simulazione <ArrowRight size={14} /></button>
         </div>
 
         <div className="sidebar-user">
@@ -423,7 +532,8 @@ export function CRA24App({
             <kbd>⌘ K</kbd>
           </label>
           <div className="top-actions">
-            <span className="sync-state"><span /> Dati sincronizzati</span>
+            <button className="demo-launch" onClick={startDemo}><Play size={14} fill="currentColor" /><span>Demo guidata</span></button>
+            <span className="sync-state demo-data-state"><Database size={13} /> Dataset dimostrativo</span>
             <button className="icon-button" aria-label="Notifiche"><Bell size={18} /><i /></button>
             <button className="top-avatar" onClick={() => setProfileOpen((open) => !open)} aria-label="Apri profilo">{currentUserInitials}</button>
           </div>
@@ -436,6 +546,12 @@ export function CRA24App({
             </div>
           )}
         </header>
+
+        <div className="demo-disclaimer-bar">
+          <Database size={14} />
+          <span><strong>Dataset dimostrativo</strong> · Aster Packaging, persone, macchine e vulnerabilità sono fittizie. Nessuna azione esterna.</span>
+          <button onClick={startDemo}><Play size={12} fill="currentColor" /> Avvia percorso</button>
+        </div>
 
         <div className="page-content">
           {view === "overview" && (
@@ -453,6 +569,8 @@ export function CRA24App({
               openAssets={() => navigate("assets")}
               newIncident={() => setNewIncidentOpen(true)}
               notify={notify}
+              demoStep={demoStep}
+              demoActionRecorded={Boolean(demoActions[3])}
             />
           )}
 
@@ -475,7 +593,7 @@ export function CRA24App({
           )}
 
           {view === "components" && <ComponentsView query={normalizedQuery} notify={notify} />}
-          {view === "reports" && <ReportsView exportIncident={exportIncident} notify={notify} />}
+          {view === "reports" && <ReportsView exportIncident={exportIncident} notify={notify} demoStep={demoStep} />}
           {view === "integrations" && <IntegrationsView notify={notify} />}
           {view === "settings" && <SettingsView notify={notify} />}
         </div>
@@ -487,7 +605,7 @@ export function CRA24App({
         <div className="modal-backdrop" role="presentation">
           <form className="modal-card" onSubmit={addIncident}>
             <div className="modal-head"><div><span className="eyebrow">Nuova segnalazione</span><h2>Apri un&apos;incident room</h2></div><button type="button" onClick={() => setNewIncidentOpen(false)} aria-label="Chiudi"><X size={19} /></button></div>
-            <p className="modal-intro">Inserisci le informazioni già disponibili. CRA24 avvierà il triage e conserverà ogni modifica nel registro.</p>
+            <p className="modal-intro">Inserisci le informazioni già disponibili. CRA24 simulerà il triage e conserverà le modifiche soltanto nella sessione locale.</p>
             <div className="form-grid">
               <label><span>Identificativo</span><input name="cve" placeholder="CVE-2026-00000" required /></label>
               <label><span>Severità</span><select name="severity" defaultValue="Alta"><option>Critica</option><option>Alta</option><option>Media</option></select></label>
@@ -501,12 +619,128 @@ export function CRA24App({
         </div>
       )}
 
+      {demoWelcomeOpen && <DemoWelcome start={startDemo} explore={exploreFreely} />}
+      {demoStep !== null && (
+        <DemoGuide
+          step={demoStep}
+          previous={() => moveDemo(demoStep - 1)}
+          next={() => moveDemo(demoStep + 1)}
+          close={() => setDemoStep(null)}
+          restart={startDemo}
+          action={demoStep === 2 || demoStep === 3 ? performDemoAction : undefined}
+          actionDone={Boolean(demoActions[demoStep])}
+        />
+      )}
+      {demoCompleteOpen && (
+        <DemoComplete
+          replay={startDemo}
+          close={() => setDemoCompleteOpen(false)}
+        />
+      )}
+
       {toast && <div className="toast"><CheckCircle2 size={18} /><span>{toast}</span></div>}
     </div>
   );
 }
 
-function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, patchSelected, exportIncident, updateIncidentStatus, openIncidents, openAssets, newIncident, notify }: {
+function DemoWelcome({ start, explore }: { start: () => void; explore: () => void }) {
+  return (
+    <div className="demo-welcome-backdrop">
+      <section className="demo-welcome-card" role="dialog" aria-modal="true" aria-labelledby="demo-welcome-title">
+        <div className="demo-welcome-top">
+          <span className="demo-beta-label"><span /> Beta privata · circa 7 minuti</span>
+          <button onClick={explore} aria-label="Chiudi introduzione"><X size={18} /></button>
+        </div>
+        <div className="demo-welcome-copy">
+          <span className="eyebrow">Scenario guidato</span>
+          <h2 id="demo-welcome-title">Da una vulnerabilità HMI alle macchine da gestire</h2>
+          <p>Assumi il ruolo del responsabile product security di un costruttore di macchine. È appena arrivato un advisory critico: devi capire quali prodotti sono coinvolti, dare priorità ai seriali esposti e preparare una risposta documentata.</p>
+        </div>
+        <div className="demo-scenario">
+          <div><small>VULNERABILITÀ</small><strong>CVE-2026-48312</strong><span>HMI Connect Pro 4.8.0–4.8.3</span></div>
+          <ArrowRight size={18} />
+          <div><small>IMPATTO DIMOSTRATIVO</small><strong>127 seriali · 31 clienti</strong><span>89 installazioni esposte da remoto</span></div>
+        </div>
+        <div className="demo-trust-grid">
+          <div><Database size={18} /><span><strong>Dati sintetici</strong><small>Nessun cliente o macchinario reale</small></span></div>
+          <div><ShieldCheck size={18} /><span><strong>Nessun accesso agli impianti</strong><small>La demo non interroga sistemi esterni</small></span></div>
+          <div><CheckCircle2 size={18} /><span><strong>Decisione umana</strong><small>Nessun invio o verdetto automatico</small></span></div>
+        </div>
+        <div className="demo-route" aria-label="Percorso della demo">
+          {demoSteps.map((step, index) => <span key={step.title}><b>{index + 1}</b>{step.eyebrow.split("·")[1]}</span>)}
+        </div>
+        <div className="demo-welcome-actions">
+          <button className="button secondary" onClick={explore}>Esplora liberamente</button>
+          <button className="button primary" onClick={start}><Play size={15} fill="currentColor" /> Inizia la demo guidata</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DemoGuide({ step, previous, next, close, restart, action, actionDone }: { step: number; previous: () => void; next: () => void; close: () => void; restart: () => void; action?: () => void; actionDone: boolean }) {
+  const content = demoSteps[step];
+  const actionLabel = step === 2 ? "Seleziona un seriale esposto" : "Pianifica la patch demo";
+  return (
+    <aside className="demo-guide" role="dialog" aria-label={`Demo guidata, passaggio ${step + 1} di ${demoSteps.length}`}>
+      <div className="demo-guide-head">
+        <span>{content.eyebrow}</span>
+        <div>
+          <button onClick={restart} aria-label="Ricomincia demo"><RotateCcw size={15} /></button>
+          <button onClick={close} aria-label="Chiudi demo"><X size={16} /></button>
+        </div>
+      </div>
+      <div className="demo-progress" aria-hidden="true">
+        {demoSteps.map((item, index) => <i key={item.title} className={index <= step ? "complete" : ""} />)}
+      </div>
+      <h3>{content.title}</h3>
+      <p>{content.copy}</p>
+      <div className="demo-observe"><Eye size={16} /><span><b>Cosa osservare</b>{content.observe}</span></div>
+      {action && <button className={`demo-action ${actionDone ? "done" : ""}`} onClick={action} disabled={actionDone}>{actionDone ? <Check size={15} /> : <Play size={14} fill="currentColor" />}{actionDone ? "Azione completata" : actionLabel}</button>}
+      <div className="demo-guide-actions">
+        <button className="button secondary" onClick={previous} disabled={step === 0}>Indietro</button>
+        <button className="button primary" onClick={next} disabled={Boolean(action && !actionDone)}>{step === demoSteps.length - 1 ? "Concludi demo" : "Continua"}<ArrowRight size={15} /></button>
+      </div>
+    </aside>
+  );
+}
+
+function DemoComplete({ replay, close }: { replay: () => void; close: () => void }) {
+  const feedbackBody = [
+    "Buongiorno, ho provato la demo CRA24.",
+    "",
+    "1. Oggi come individuate i seriali coinvolti da una vulnerabilità?",
+    "Risposta: ",
+    "",
+    "2. Quale passaggio della demo sarebbe più utile nel vostro processo?",
+    "Risposta: ",
+    "",
+    "3. Cosa manca per poterla testare su una famiglia di macchine?",
+    "Risposta: ",
+  ].join("\n");
+  const feedbackHref = `mailto:cra24@kreluna.it?subject=${encodeURIComponent("Feedback demo CRA24")}&body=${encodeURIComponent(feedbackBody)}`;
+
+  return (
+    <div className="demo-welcome-backdrop">
+      <section className="demo-complete-card" role="dialog" aria-modal="true" aria-labelledby="demo-complete-title">
+        <span className="demo-complete-icon"><CheckCircle2 size={24} /></span>
+        <span className="eyebrow">Percorso completato</span>
+        <h2 id="demo-complete-title">Ora vogliamo capire il vostro processo reale</h2>
+        <p>La demo ha mostrato il flusso completo senza usare dati aziendali. Una risposta via email è sufficiente: non è necessario fissare una chiamata.</p>
+        <div className="demo-question-list">
+          <span><b>1</b>Come individuate oggi i seriali coinvolti?</span>
+          <span><b>2</b>Quale passaggio vi farebbe risparmiare più tempo?</span>
+          <span><b>3</b>Cosa manca per provare una famiglia di macchine?</span>
+        </div>
+        <a className="button primary demo-mail-button" href={feedbackHref}><Mail size={16} /> Prepara la risposta email</a>
+        <div className="demo-complete-actions"><button onClick={replay}><RotateCcw size={14} /> Rivedi demo</button><button onClick={close}>Continua a esplorare</button></div>
+        <small>Nessun dato della prova viene inviato automaticamente a CRA24.</small>
+      </section>
+    </div>
+  );
+}
+
+function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, patchSelected, exportIncident, updateIncidentStatus, openIncidents, openAssets, newIncident, notify, demoStep, demoActionRecorded }: {
   incident: Incident;
   tab: "impact" | "assets" | "timeline";
   setTab: (tab: "impact" | "assets" | "timeline") => void;
@@ -520,6 +754,8 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
   openAssets: () => void;
   newIncident: () => void;
   notify: (message: string) => void;
+  demoStep: number | null;
+  demoActionRecorded: boolean;
 }) {
   const affected = assets.filter((asset) => asset.status !== "Non esposto");
   return (
@@ -531,21 +767,21 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
 
       <section className="metrics-grid">
         <article className="metric-card"><div className="metric-icon danger"><AlertTriangle size={18} /></div><div><span>Incidenti aperti</span><strong>3</strong><small><b>1 critico</b> richiede attenzione</small></div></article>
-        <article className="metric-card"><div className="metric-icon ink"><Box size={18} /></div><div><span>Seriali monitorati</span><strong>2.418</strong><small>6 famiglie di prodotto</small></div></article>
-        <article className="metric-card"><div className="metric-icon amber"><Activity size={18} /></div><div><span>Seriali a rischio</span><strong>127</strong><small>31 clienti potenzialmente coinvolti</small></div></article>
-        <article className="metric-card readiness"><div className="metric-icon green"><Gauge size={18} /></div><div><span>CRA readiness</span><strong>82%</strong><small>4 controlli ancora da completare</small></div><div className="metric-ring" style={{ "--value": "82%" } as React.CSSProperties}><span>82</span></div></article>
+        <article className="metric-card"><div className="metric-icon ink"><Box size={18} /></div><div><span>Seriali nello scenario</span><strong>2.418</strong><small>6 famiglie dimostrative</small></div></article>
+        <article className="metric-card"><div className="metric-icon amber"><Activity size={18} /></div><div><span>Seriali demo da valutare</span><strong>127</strong><small>31 clienti fittizi coinvolti</small></div></article>
+        <article className="metric-card readiness"><div className="metric-icon green"><Gauge size={18} /></div><div><span>Copertura workflow demo</span><strong>82%</strong><small>4 passaggi ancora da simulare</small></div><div className="metric-ring" style={{ "--value": "82%" } as React.CSSProperties}><span>82</span></div></article>
       </section>
 
-      <section className="incident-hero">
+      <section className={`incident-hero ${demoStep === 0 ? "demo-focus" : ""}`}>
         <div className="incident-summary">
           <div className="incident-kicker"><span className="live-pulse" /> INCIDENTE PRIORITARIO <span>Rilevato {incident.detected.toLowerCase()}</span></div>
           <div className="incident-title-row"><div><div className="incident-id-row"><code>{incident.cve}</code><span className={`severity ${incident.severity.toLowerCase()}`}>{incident.severity}</span><span className={`status ${statusClass(incident.status)}`}>{incident.status}</span></div><h2>{incident.title}</h2><p>{incident.summary}</p></div><button className="round-action" onClick={openIncidents} aria-label="Apri tutti gli incidenti"><ArrowRight size={19} /></button></div>
           <div className="incident-meta"><span><ServerCog size={15} /><b>{incident.component}</b> {incident.version}</span><span><Users size={15} />Owner: <b>{incident.owner}</b></span></div>
         </div>
         <div className="deadline-panel">
-          <div className="deadline-heading"><Clock3 size={17} /><span>CRA Article 14</span><em>Timer attivo</em></div>
-          <div className="countdown"><div><small>EARLY WARNING · 24H</small><strong>05<span>h</span> 42<span>m</span></strong><p>Scade oggi alle 14:42</p></div><div><small>NOTIFICA COMPLETA · 72H</small><strong>53<span>h</span> 42<span>m</span></strong><p>Scade sabato alle 14:42</p></div></div>
-          <div className="deadline-actions"><button onClick={() => notify("Bozza early warning aperta per la revisione")}><FileText size={15} /> Apri bozza 24h</button><button onClick={() => notify("Responsabile notificato")}>Avvisa owner</button></div>
+          <div className="deadline-heading"><Clock3 size={17} /><span>CRA Article 14</span><em>Timer simulato</em></div>
+          <div className="countdown"><div><small>EARLY WARNING · ENTRO 24H</small><strong>T+24<span>h</span></strong><p>Finestra dello scenario</p></div><div><small>NOTIFICA COMPLETA · ENTRO 72H</small><strong>T+72<span>h</span></strong><p>Finestra dello scenario</p></div></div>
+          <div className="deadline-actions"><button onClick={() => notify("Bozza demo aperta: nessun invio effettuato")}><FileText size={15} /> Apri bozza demo</button><button onClick={() => notify("Simulazione registrata: nessun responsabile contattato")}>Simula avviso</button></div>
         </div>
       </section>
 
@@ -560,8 +796,8 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
 
           {tab === "impact" && (
             <div className="impact-content">
-              <div className="impact-map">
-                <div className="map-node source"><span><AlertTriangle size={17} /></span><div><small>VULNERABILITÀ</small><strong>{incident.cve}</strong><em>CVSS 9.8 · Exploit osservato</em></div></div>
+              <div className={`impact-map ${demoStep === 1 ? "demo-focus" : ""}`}>
+                <div className="map-node source"><span><AlertTriangle size={17} /></span><div><small>VULNERABILITÀ · SCENARIO</small><strong>{incident.cve}</strong><em>CVSS 9.8 · dato dimostrativo</em></div></div>
                 <div className="map-connector"><span /></div>
                 <div className="map-node component"><span><ServerCog size={17} /></span><div><small>COMPONENTE</small><strong>{incident.component}</strong><em>{incident.version}</em></div><b>1</b></div>
                 <div className="map-connector split"><span /><i /><i /></div>
@@ -572,33 +808,34 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
                 </div>
               </div>
               <div className="evidence-list">
-                <h3>Condizioni verificate</h3>
-                <div><CheckCircle2 size={17} /><span><b>Componente presente</b><small>Fingerprint corrispondente su 127 seriali</small></span></div>
-                <div><CheckCircle2 size={17} /><span><b>Vettore raggiungibile</b><small>89 gateway espongono il servizio remoto</small></span></div>
+                <h3>Evidenze simulate</h3>
+                <div><CheckCircle2 size={17} /><span><b>Componente presente nello scenario</b><small>Fingerprint demo associato a 127 seriali</small></span></div>
+                <div><CheckCircle2 size={17} /><span><b>Vettore raggiungibile nello scenario</b><small>89 gateway fittizi risultano esposti</small></span></div>
                 <div className="pending"><CircleDot size={17} /><span><b>Exploitability review</b><small>Revisione umana in corso · Laura Bianchi</small></span></div>
-                <div className="muted"><Clock3 size={17} /><span><b>Conferma del fornitore</b><small>Richiesta inviata 24 minuti fa</small></span></div>
+                <div className="muted"><Clock3 size={17} /><span><b>Conferma del fornitore</b><small>Esempio in attesa · nessuna richiesta reale inviata</small></span></div>
               </div>
             </div>
           )}
 
           {tab === "assets" && (
-            <div className="asset-mini-table">
+            <div className={`asset-mini-table ${demoStep === 2 ? "demo-focus" : ""}`}>
               <div className="bulk-bar"><span>{selectedAssets.length ? `${selectedAssets.length} selezionati` : `${affected.length} seriali da gestire`}</span><button onClick={patchSelected}><PackageCheck size={15} /> Pianifica patch</button><button onClick={openAssets}>Apri registro completo</button></div>
               <div className="table-scroll"><table><thead><tr><th><input type="checkbox" aria-label="Seleziona tutti" checked={selectedAssets.length === affected.length && affected.length > 0} onChange={(event) => setAssets((current) => current.map((asset) => ({ ...asset, selected: asset.status !== "Non esposto" ? event.target.checked : false })))} /></th><th>Seriale</th><th>Cliente / sito</th><th>Release</th><th>Esposizione</th><th>Stato</th></tr></thead><tbody>{assets.slice(0, 6).map((asset) => <AssetRow key={asset.id} asset={asset} toggle={() => setAssets((current) => current.map((row) => row.id === asset.id ? { ...row, selected: !row.selected } : row))} />)}</tbody></table></div>
             </div>
           )}
 
           {tab === "timeline" && (
-            <div className="timeline-list">
-              <TimelineItem time="08:42" title="Vulnerabilità acquisita" copy="Advisory VisuTech verificato e collegato al componente HMI Connect Pro." icon={<Inbox size={16} />} />
+            <div className={`timeline-list ${demoStep === 4 ? "demo-focus" : ""}`}>
+              <TimelineItem time="08:42" title="Vulnerabilità acquisita" copy="Advisory fittizio collegato al componente HMI Connect Pro dello scenario." icon={<Inbox size={16} />} />
               <TimelineItem time="08:47" title="Impact graph completato" copy="127 seriali e 31 clienti identificati sulle release 5.10–5.12." icon={<Link2 size={16} />} />
               <TimelineItem time="09:06" title="Triage assegnato" copy="Laura Bianchi ha preso in carico la valutazione di exploitability." icon={<Users size={16} />} />
-              <TimelineItem time="09:28" title="Fornitore contattato" copy="Richiesta patch e conferma tecnica inviata a VisuTech." icon={<Bell size={16} />} pending />
+              <TimelineItem time="09:28" title="Contatto fornitore simulato" copy="Esempio di richiesta patch: nessun messaggio esterno è stato inviato." icon={<Bell size={16} />} pending />
+              {demoActionRecorded && <TimelineItem time="Adesso" title="Pianificazione demo registrata" copy="Patch pianificata per PKG-24-01874 nella sola sessione locale. Nessun messaggio esterno inviato." icon={<PackageCheck size={16} />} />}
             </div>
           )}
         </article>
 
-        <aside className="panel response-panel">
+        <aside className={`panel response-panel ${demoStep === 3 ? "demo-focus" : ""}`}>
           <div className="panel-heading"><div><span className="eyebrow">Response plan</span><h3>Avanzamento risposta</h3></div><strong>{incident.progress}%</strong></div>
           <div className="progress-track"><span style={{ width: `${incident.progress}%` }} /></div>
           <div className="response-steps">
@@ -612,15 +849,15 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
             {incident.status === "Triage" && <button className="button primary wide" onClick={() => updateIncidentStatus("In corso", 36)}>Avvia valutazione <ArrowRight size={16} /></button>}
             {incident.status !== "Triage" && incident.status !== "Chiuso" && <button className="button primary wide" onClick={() => updateIncidentStatus("Monitoraggio", 81)}>Conferma triage <ArrowRight size={16} /></button>}
             {incident.status === "Monitoraggio" && <button className="button secondary wide" onClick={() => updateIncidentStatus("Chiuso", 100)}>Chiudi incidente</button>}
-            {incident.status === "Chiuso" && <button className="button secondary wide" onClick={exportIncident}><Download size={16} /> Scarica dossier firmato</button>}
-            <small>Ogni azione viene registrata nell&apos;audit log.</small>
+            {incident.status === "Chiuso" && <button className="button secondary wide" onClick={exportIncident}><Download size={16} /> Scarica esempio dossier</button>}
+            <small>Le azioni della beta restano nella sessione locale del browser.</small>
           </div>
         </aside>
       </section>
 
       <section className="bottom-grid">
         <article className="panel recent-panel"><div className="section-title"><div><h3>Incidenti recenti</h3><p>Attività sulle altre linee di prodotto</p></div><button onClick={openIncidents}>Vedi tutti <ArrowRight size={15} /></button></div><div className="recent-row"><span className="severity-dot high" /><div><strong>CVE-2026-47105</strong><small>RemoteLink Gateway · FlexPack X5</small></div><span>48 seriali</span><em className="status triage">Triage</em><ChevronRight size={16} /></div><div className="recent-row"><span className="severity-dot medium" /><div><strong>CVE-2026-44987</strong><small>EdgeCore IPC · 4 modelli</small></div><span>214 seriali</span><em className="status monitoraggio">Monitoraggio</em><ChevronRight size={16} /></div></article>
-        <article className="panel coverage-panel"><div className="section-title"><div><h3>Copertura dati</h3><p>Qualità del grafo installato</p></div><button onClick={openAssets}>Dettagli</button></div><div className="coverage-main"><div className="coverage-ring"><strong>94%</strong><span>completo</span></div><div><p><span className="dot green" />Seriali con release nota <b>2.276</b></p><p><span className="dot amber" />Da classificare <b>98</b></p><p><span className="dot gray" />Dati insufficienti <b>44</b></p></div></div></article>
+        <article className="panel coverage-panel"><div className="section-title"><div><h3>Copertura dati demo</h3><p>Qualità del grafo simulato</p></div><button onClick={openAssets}>Dettagli</button></div><div className="coverage-main"><div className="coverage-ring"><strong>94%</strong><span>scenario</span></div><div><p><span className="dot green" />Seriali con release nota <b>2.276</b></p><p><span className="dot amber" />Da classificare <b>98</b></p><p><span className="dot gray" />Dati insufficienti <b>44</b></p></div></div></article>
       </section>
     </>
   );
@@ -640,8 +877,8 @@ function AssetsView({ assets, setAssets, importCsv, exportAssets }: { assets: As
   const [status, setStatus] = useState("Tutti gli stati");
   const visible = assets.filter((asset) => status === "Tutti gli stati" || asset.status === status);
   return <>
-    <section className="page-heading"><div><span className="eyebrow">Installed base</span><h1>Parco installato</h1><p>Ogni configurazione, release e cliente collegati alle vulnerabilità rilevanti.</p></div><div className="heading-actions"><button className="button secondary" onClick={exportAssets}><Download size={16} /> Esporta CSV</button><button className="button primary" onClick={importCsv}><Upload size={16} /> Importa seriali</button></div></section>
-    <section className="asset-summary"><div><strong>2.418</strong><span>Seriali totali</span></div><div><strong>2.276</strong><span>Release verificata</span></div><div><strong>98</strong><span>Da classificare</span></div><div><strong>14</strong><span>Paesi coperti</span></div></section>
+    <section className="page-heading"><div><span className="eyebrow">Installed base · dati demo</span><h1>Parco installato</h1><p>Configurazioni fittizie usate per provare la mappatura. Un CSV importato resta soltanto nel browser.</p></div><div className="heading-actions"><button className="button secondary" onClick={exportAssets}><Download size={16} /> Esporta CSV demo</button><button className="button primary" onClick={importCsv}><Upload size={16} /> Importa CSV locale</button></div></section>
+    <section className="asset-summary"><div><strong>2.418</strong><span>Seriali demo</span></div><div><strong>2.276</strong><span>Release note nello scenario</span></div><div><strong>98</strong><span>Da classificare</span></div><div><strong>14</strong><span>Paesi simulati</span></div></section>
     <section className="panel registry-panel"><div className="registry-toolbar"><div><h3>Registro macchine</h3><span>{visible.length} risultati visualizzati</span></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option>Tutti gli stati</option><option>Da verificare</option><option>Patch pianificata</option><option>Mitigato</option><option>Non esposto</option></select></div><div className="table-scroll"><table className="registry-table"><thead><tr><th><input type="checkbox" aria-label="Seleziona tutti" /></th><th>Seriale / modello</th><th>Cliente / sito</th><th>Release</th><th>Esposizione</th><th>Stato</th><th /></tr></thead><tbody>{visible.map((asset) => <AssetRow key={asset.id} asset={asset} toggle={() => setAssets((current) => current.map((row) => row.id === asset.id ? { ...row, selected: !row.selected } : row))} />)}</tbody></table></div></section>
   </>;
 }
@@ -652,21 +889,21 @@ function AssetRow({ asset, toggle }: { asset: Asset; toggle: () => void }) {
 
 function ComponentsView({ query, notify }: { query: string; notify: (message: string) => void }) {
   const visible = components.filter((item) => [item.name, item.supplier, item.version].join(" ").toLowerCase().includes(query));
-  return <><section className="page-heading"><div><span className="eyebrow">Software supply chain</span><h1>Componenti software</h1><p>Dipendenze, fornitori e versioni collegate ai prodotti commercializzati.</p></div><button className="button primary" onClick={() => notify("Importazione SBOM pronta: seleziona un file CycloneDX o SPDX")}><Upload size={16} /> Importa SBOM</button></section><section className="component-grid">{visible.map((item) => <article className="component-card" key={item.name}><div className="component-top"><span><ServerCog size={19} /></span><em className={`component-health ${statusClass(item.health)}`}>{item.health}</em></div><h3>{item.name}</h3><p>{item.supplier} · <code>{item.version}</code></p><div className="component-stats"><span><small>PRODOTTI</small><strong>{item.products}</strong></span><span><small>SERIALI</small><strong>{item.serials}</strong></span></div><button onClick={() => notify(`Grafo di ${item.name} aperto`)}>Apri impact graph <ArrowRight size={15} /></button></article>)}</section></>;
+  return <><section className="page-heading"><div><span className="eyebrow">Software supply chain · scenario demo</span><h1>Componenti software</h1><p>Dipendenze, fornitori e versioni fittizie collegate ai prodotti dello scenario.</p></div><button className="button secondary" disabled title="La connessione SBOM verrà verificata in un eventuale pilot"><Upload size={16} /> SBOM disponibile nel pilot</button></section><section className="component-grid">{visible.map((item) => <article className="component-card" key={item.name}><div className="component-top"><span><ServerCog size={19} /></span><em className={`component-health ${statusClass(item.health)}`}>{item.health}</em></div><h3>{item.name}</h3><p>{item.supplier} · <code>{item.version}</code></p><div className="component-stats"><span><small>PRODOTTI DEMO</small><strong>{item.products}</strong></span><span><small>SERIALI DEMO</small><strong>{item.serials}</strong></span></div><button onClick={() => notify(`Anteprima del grafo demo di ${item.name}`)}>Apri impact graph <ArrowRight size={15} /></button></article>)}</section></>;
 }
 
-function ReportsView({ exportIncident, notify }: { exportIncident: () => void; notify: (message: string) => void }) {
-  return <><section className="page-heading"><div><span className="eyebrow">Evidence vault</span><h1>Dossier & report</h1><p>Documenti tracciati, revisionati e pronti per il controllo umano.</p></div><button className="button primary" onClick={exportIncident}><FileCheck2 size={16} /> Genera dossier</button></section><section className="report-callout"><div className="report-callout-icon"><ShieldEllipsis size={25} /></div><div><span>Preparazione CRA</span><h2>Il processo di segnalazione è configurato all&apos;82%</h2><p>Completa il referente sostitutivo e verifica il canale di escalation prima dell&apos;11 settembre.</p></div><button onClick={() => notify("Checklist di preparazione aperta")}>Completa checklist <ArrowRight size={16} /></button></section><section className="panel reports-table"><div className="section-title"><div><h3>Documenti recenti</h3><p>Bozze, assessment e dossier finali</p></div><button><ListFilter size={15} /> Filtra</button></div>{reportRows.map((report) => <div className="report-row" key={report.title}><span className="report-icon"><FileText size={18} /></span><div><strong>{report.title}</strong><small>{report.type} · {report.date}</small></div><span>{report.owner}</span><em className={`report-state ${statusClass(report.state)}`}>{report.state}</em><button onClick={() => notify(`${report.title} scaricato`)} aria-label={`Scarica ${report.title}`}><Download size={16} /></button></div>)}</section></>;
+function ReportsView({ exportIncident, notify, demoStep }: { exportIncident: () => void; notify: (message: string) => void; demoStep: number | null }) {
+  return <><section className="page-heading"><div><span className="eyebrow">Evidence vault · dati demo</span><h1>Dossier & report</h1><p>Documenti dimostrativi organizzati per la revisione umana.</p></div><button className="button primary" onClick={exportIncident}><FileCheck2 size={16} /> Genera dossier demo</button></section><section className={`report-callout ${demoStep === 5 ? "demo-focus" : ""}`}><div className="report-callout-icon"><ShieldEllipsis size={25} /></div><div><span>Simulazione CRA</span><h2>Il workflow di risposta è configurato all&apos;82%</h2><p>I documenti mostrati non sono certificati, firmati o inviati: servono a validare struttura e processo.</p></div><button onClick={() => notify("Checklist dimostrativa aperta")}>Vedi checklist <ArrowRight size={16} /></button></section><section className="panel reports-table"><div className="section-title"><div><h3>Documenti dello scenario</h3><p>Bozze, assessment ed esempi di dossier</p></div><button><ListFilter size={15} /> Filtra</button></div>{reportRows.map((report) => <div className="report-row" key={report.title}><span className="report-icon"><FileText size={18} /></span><div><strong>{report.title}</strong><small>{report.type} · {report.date}</small></div><span>{report.owner}</span><em className={`report-state ${statusClass(report.state)}`}>{report.state}</em><button onClick={() => notify(`${report.title}: anteprima dimostrativa`)} aria-label={`Apri ${report.title}`}><Download size={16} /></button></div>)}</section></>;
 }
 
 function IntegrationsView({ notify }: { notify: (message: string) => void }) {
   const items = [
-    { icon: <Box size={20} />, name: "ERP / PLM", copy: "Seriali, distinte e configurazioni prodotto", state: "Connesso", detail: "Ultimo sync 8 min fa" },
-    { icon: <ServerCog size={20} />, name: "SBOM Pipeline", copy: "CycloneDX, SPDX e scanner esistenti", state: "Connesso", detail: "12 sorgenti attive" },
-    { icon: <Users size={20} />, name: "CRM & Service", copy: "Clienti, siti installati e referenti", state: "Connesso", detail: "2.418 asset collegati" },
-    { icon: <Globe2 size={20} />, name: "CRA Single Reporting Platform", copy: "Preparazione pacchetto per invio autorizzato", state: "Da configurare", detail: "Richiede referente CRA" },
+    { icon: <Box size={20} />, name: "ERP / PLM", copy: "Seriali, distinte e configurazioni prodotto", state: "Simulato", detail: "Nessuna connessione attiva nella beta" },
+    { icon: <ServerCog size={20} />, name: "SBOM Pipeline", copy: "CycloneDX, SPDX e scanner esistenti", state: "Simulato", detail: "Il dataset dimostra il risultato atteso" },
+    { icon: <Users size={20} />, name: "CRM & Service", copy: "Clienti, siti installati e referenti", state: "Simulato", detail: "Clienti e asset sono interamente fittizi" },
+    { icon: <Globe2 size={20} />, name: "CRA Single Reporting Platform", copy: "Preparazione pacchetto per invio autorizzato", state: "Previsto nel pilot", detail: "Nessun invio automatico nella beta" },
   ];
-  return <><section className="page-heading"><div><span className="eyebrow">Data fabric</span><h1>Integrazioni</h1><p>Collega le fonti che alimentano l&apos;impact graph senza sostituire i sistemi esistenti.</p></div></section><section className="integration-list">{items.map((item) => <article className="integration-card" key={item.name}><span className="integration-icon">{item.icon}</span><div><h3>{item.name}</h3><p>{item.copy}</p><small>{item.detail}</small></div><em className={item.state === "Connesso" ? "connected" : "configure"}><span />{item.state}</em><button className="button secondary compact" onClick={() => notify(`${item.name}: configurazione aperta`)}>{item.state === "Connesso" ? "Gestisci" : "Configura"}</button></article>)}</section></>;
+  return <><section className="page-heading"><div><span className="eyebrow">Data fabric · architettura proposta</span><h1>Integrazioni</h1><p>Questa pagina illustra le fonti previste: nella beta nessun sistema aziendale è collegato.</p></div></section><section className="integration-list">{items.map((item) => <article className="integration-card" key={item.name}><span className="integration-icon">{item.icon}</span><div><h3>{item.name}</h3><p>{item.copy}</p><small>{item.detail}</small></div><em className={item.state === "Simulato" ? "simulated" : "configure"}><span />{item.state}</em><button className="button secondary compact" onClick={() => notify(`${item.name}: flusso illustrativo, connettore non attivo`)}>Come funzionerebbe</button></article>)}</section></>;
 }
 
 function SettingsView({ notify }: { notify: (message: string) => void }) {

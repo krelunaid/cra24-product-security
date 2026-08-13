@@ -42,8 +42,10 @@ test("server-renders the CRA24 product workspace", async () => {
   assert.match(html, /<title>CRA24 — Product Security Operations<\/title>/i);
   assert.match(html, /Centro operativo/);
   assert.match(html, /CVE-2026-48312/);
-  assert.match(html, /Seriali monitorati/);
+  assert.match(html, /Seriali nello scenario/);
   assert.match(html, /CRA Article 14/);
+  assert.match(html, /Dataset dimostrativo/);
+  assert.match(html, /Aster Packaging · fittizia/);
   assert.match(html, /Andrea Test/);
   assert.match(html, /andrea@example\.com/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
@@ -67,9 +69,12 @@ test("ships finished metadata and removes disposable preview code", async () => 
   assert.match(page, /CRA24App/);
   assert.match(page, /requireChatGPTUser/);
   assert.match(layout, /Product Security Operations/);
-  assert.match(app, /Importa seriali/);
-  assert.match(app, /Genera dossier/);
+  assert.match(app, /Demo guidata/);
+  assert.match(app, /Importa CSV locale/);
+  assert.match(app, /Genera dossier demo/);
   assert.match(app, /Approvazione umana obbligatoria/);
+  assert.match(app, /Nessun timer reale/);
+  assert.doesNotMatch(app, /Dati sincronizzati|Ultimo sync|Timer attivo|Dossier firmato|Responsabile notificato/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("app/_sites-preview", projectRoot)));
 });
