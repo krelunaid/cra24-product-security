@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Native anchors avoid a Vinext production prefetch failure. */
 import type { Metadata } from "next";
 import { ArrowLeft, Inbox, LockKeyhole, Mail } from "lucide-react";
-import Link from "next/link";
 import { BetaRequestRecord, ensureBetaSchema, getBetaDatabase } from "../../db/beta";
 import { ensureDemoSchema } from "../../db/demo";
 import { chatGPTSignOutPath, requireChatGPTUser } from "../chatgpt-auth";
@@ -54,7 +54,7 @@ export default async function RequestsPage() {
     <main className={styles.adminPage}>
       <header className={styles.adminHeader}>
         <div>
-          <Link href="/"><ArrowLeft size={14} /> CRA24</Link>
+          <a href="/"><ArrowLeft size={14} /> CRA24</a>
           <h1>Richieste beta</h1>
           <p>Le ultime 100 candidature ricevute dal sito.</p>
         </div>

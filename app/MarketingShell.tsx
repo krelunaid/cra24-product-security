@@ -1,17 +1,17 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Native anchors avoid a Vinext production prefetch failure. */
 import { ArrowUpRight } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import styles from "./marketing.module.css";
 
 export function CRA24Brand({ dark = false }: { dark?: boolean }) {
   return (
-    <Link className={`${styles.brand} ${dark ? styles.brandDark : ""}`} href="/" aria-label="CRA24, homepage">
+    <a className={`${styles.brand} ${dark ? styles.brandDark : ""}`} href="/" aria-label="CRA24, homepage">
       <span className={styles.brandSymbol}>24</span>
       <span className={styles.brandText}>
         <strong>CRA<span>24</span></strong>
         <small>by Kreluna</small>
       </span>
-    </Link>
+    </a>
   );
 }
 
@@ -22,13 +22,13 @@ export function MarketingShell({ children, lightHeader = false }: { children: Re
         <div className={styles.headerInner}>
           <CRA24Brand dark={lightHeader} />
           <nav aria-label="Navigazione sito">
-            <Link href="/#prodotto">Prodotto</Link>
-            <Link href="/#come-funziona">Come funziona</Link>
-            <Link href="/#perche-cra24">Perché CRA24</Link>
-            <Link href="/accesso">Demo</Link>
-            <Link href="/accesso">Accesso</Link>
+            <a href="/#prodotto">Prodotto</a>
+            <a href="/#come-funziona">Come funziona</a>
+            <a href="/#perche-cra24">Perché CRA24</a>
+            <a href="/accesso">Demo</a>
+            <a href="/accesso">Accesso</a>
           </nav>
-          <Link className={styles.headerCta} href="/richiedi-beta">Richiedi la beta <ArrowUpRight size={14} /></Link>
+          <a className={styles.headerCta} href="/richiedi-beta">Richiedi la beta <ArrowUpRight size={14} /></a>
         </div>
       </header>
       {children}
@@ -37,10 +37,10 @@ export function MarketingShell({ children, lightHeader = false }: { children: Re
           <CRA24Brand />
           <p>Product Security Operations per costruttori di prodotti con elementi digitali.</p>
           <div className={styles.footerLinks}>
-            <Link href="/accesso">Demo</Link>
-            <Link href="/richiedi-beta">Richiedi beta</Link>
-            <Link href="/accesso">Accesso tester</Link>
-            <Link href="/privacy">Privacy</Link>
+            <a href="/accesso">Demo</a>
+            <a href="/richiedi-beta">Richiedi beta</a>
+            <a href="/accesso">Accesso tester</a>
+            <a href="/privacy">Privacy</a>
             <a href="mailto:cra24@kreluna.it">cra24@kreluna.it</a>
           </div>
         </div>

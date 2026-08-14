@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-html-link-for-pages -- Native anchors avoid a Vinext production prefetch failure. */
 
 import {
   Activity,
@@ -40,7 +41,6 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 type View =
@@ -617,7 +617,7 @@ export function CRA24App({
             <kbd>⌘ K</kbd>
           </label>
           <div className="top-actions">
-            <Link className="site-return" href="/">Sito CRA24</Link>
+            <a className="site-return" href="/">Sito CRA24</a>
             <button className="demo-launch" onClick={startDemo}><Play size={14} fill="currentColor" /><span>Demo guidata</span></button>
             <span className={`sync-state demo-data-state ${saveState === "error" ? "sync-error" : ""}`}><Database size={13} /> {saveState === "loading" ? "Caricamento…" : saveState === "saving" ? "Salvataggio…" : saveState === "error" ? "Salvataggio non riuscito" : "Sandbox salvata"}</span>
             <button className="icon-button" aria-label="Notifiche" onClick={() => notify("Nessuna notifica esterna: nella sandbox gli avvisi sono soltanto simulati")}><Bell size={18} /><i /></button>

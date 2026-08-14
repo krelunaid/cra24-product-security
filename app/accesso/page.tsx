@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ArrowRight, Check, KeyRound, LockKeyhole, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 import { ensureDemoSchema, getDemoAccess, getDemoDatabase, isOwnerEmail } from "../../db/demo";
 import { chatGPTSignInPath, chatGPTSignOutPath, getChatGPTUser } from "../chatgpt-auth";
 import { MarketingShell } from "../MarketingShell";
@@ -37,8 +36,8 @@ export default async function AccessPage() {
                 <span><b>Azienda</b>{access.company}</span>
                 <span><b>Ruolo</b>{access.role}</span>
               </div>
-              <Link className={styles.accessPrimary} href="/demo">Apri la sandbox <ArrowRight size={16} /></Link>
-              {isOwnerEmail(user.email) && <Link className={styles.accessSecondary} href="/richieste">Gestisci richieste e accessi</Link>}
+              <a className={styles.accessPrimary} href="/demo">Apri la sandbox <ArrowRight size={16} /></a>
+              {isOwnerEmail(user.email) && <a className={styles.accessSecondary} href="/richieste">Gestisci richieste e accessi</a>}
               <a className={styles.accessSecondary} href={chatGPTSignOutPath("/accesso")}>Usa un altro account</a>
             </>
           ) : user ? (
@@ -50,7 +49,7 @@ export default async function AccessPage() {
                 <span><Check size={15} /> Attendi la conferma via email</span>
                 <span><Check size={15} /> Rientra usando lo stesso indirizzo approvato</span>
               </div>
-              <Link className={styles.accessPrimary} href="/richiedi-beta">Richiedi l’accesso <ArrowRight size={16} /></Link>
+              <a className={styles.accessPrimary} href="/richiedi-beta">Richiedi l’accesso <ArrowRight size={16} /></a>
               <a className={styles.accessSecondary} href={chatGPTSignOutPath("/accesso")}>Accedi con un altro indirizzo</a>
             </>
           ) : (
@@ -63,7 +62,7 @@ export default async function AccessPage() {
                 <span><LockKeyhole size={15} /> Sandbox separata per ogni tester</span>
               </div>
               <a className={styles.accessPrimary} href={chatGPTSignInPath("/demo")}>Accedi alla sandbox <ArrowRight size={16} /></a>
-              <p className={styles.accessFinePrint}>Non sei ancora stato approvato? <Link href="/richiedi-beta">Richiedi la beta</Link>.</p>
+              <p className={styles.accessFinePrint}>Non sei ancora stato approvato? <a href="/richiedi-beta">Richiedi la beta</a>.</p>
             </>
           )}
         </section>

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ArrowRight, LockKeyhole } from "lucide-react";
-import Link from "next/link";
 import { ensureDemoSchema, getDemoAccess, getDemoDatabase } from "../../db/demo";
 import { CRA24App } from "../CRA24App";
 import { chatGPTSignOutPath, requireChatGPTUser } from "../chatgpt-auth";
@@ -26,7 +25,7 @@ export default async function DemoPage() {
         <LockKeyhole size={25} />
         <h1>Accesso beta non abilitato.</h1>
         <p>L’indirizzo {user.email} non è ancora tra i tester approvati.</p>
-        <Link href="/accesso">Controlla l’accesso <ArrowRight size={14} /></Link>
+        <a href="/accesso">Controlla l’accesso <ArrowRight size={14} /></a>
         <a href={chatGPTSignOutPath("/accesso")}>Usa un altro account</a>
       </main>
     );

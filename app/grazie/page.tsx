@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Native anchors avoid a Vinext production prefetch failure. */
 import type { Metadata } from "next";
 import { ArrowRight, CheckCircle2, Mail } from "lucide-react";
-import Link from "next/link";
 import { MarketingShell } from "../MarketingShell";
 import styles from "../marketing.module.css";
 
@@ -25,7 +25,7 @@ export default function ThankYouPage() {
             <span className={styles.thankYouNote}><Mail size={14} /> Nessuna telefonata verrà programmata automaticamente.</span>
             <div className={styles.thankYouActions}>
               <a className={styles.darkAction} href="/accesso">Accedi alla demo <ArrowRight size={15} /></a>
-              <Link className={styles.outlineAction} href="/">Torna alla homepage</Link>
+              <a className={styles.outlineAction} href="/">Torna alla homepage</a>
             </div>
           </section>
         </div>
