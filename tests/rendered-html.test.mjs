@@ -86,8 +86,8 @@ test("normalizes approval identity and rejects cross-origin writes", () => {
   assert.equal(hasSameOrigin("https://cra24.kreluna.it/api/demo-state", null), false);
 });
 
-test("ships finished metadata, persistence and no preview code", async () => {
-  const [home, accessPage, demo, layout, app, stateRoute, demoDb, adminRoute, hosting, packageJson] = await Promise.all([
+test("ships finished metadata, persistence, consent-gated measurement and no preview code", async () => {
+  const [home, accessPage, demo, layout, app, stateRoute, demoDb, adminRoute, hosting, packageJson, metaPixel, betaForm, privacy] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/accesso/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/demo/page.tsx", import.meta.url), "utf8"),
@@ -98,6 +98,9 @@ test("ships finished metadata, persistence and no preview code", async () => {
     readFile(new URL("../app/api/admin/requests/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/MetaPixel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/BetaRequestForm.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/privacy/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(home, /MarketingShell/);
   assert.match(accessPage, /Entra nella beta privata/);
@@ -119,5 +122,13 @@ test("ships finished metadata, persistence and no preview code", async () => {
   assert.match(adminRoute, /isOwnerEmail/);
   assert.match(hosting, /"d1": "DB"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+  assert.match(layout, /MetaPixel/);
+  assert.match(metaPixel, /cra24_meta_tracking_consent_v1/);
+  assert.match(metaPixel, /consent !== "accepted"/);
+  assert.match(metaPixel, /ViewContent/);
+  assert.match(metaPixel, /Lead/);
+  assert.doesNotMatch(metaPixel, /<noscript|tr\?id=/);
+  assert.match(betaForm, /LEAD_MARKER_KEY/);
+  assert.match(privacy, /Pixel Meta non viene caricato/);
   await assert.rejects(access(new URL("app/_sites-preview", projectRoot)));
 });

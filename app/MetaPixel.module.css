@@ -1,0 +1,103 @@
+.banner {
+  position: fixed;
+  z-index: 10000;
+  right: 22px;
+  bottom: 22px;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(940px, calc(100% - 44px));
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 16px;
+  color: #f8fafc;
+  background: rgba(7, 17, 31, .98);
+  box-shadow: 0 24px 70px rgba(2, 6, 23, .34);
+}
+
+.copy {
+  max-width: 620px;
+}
+
+.copy strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+
+.copy p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.copy a {
+  color: #6ee7b7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 10px;
+  min-width: 250px;
+}
+
+.choice,
+.preferences {
+  min-height: 42px;
+  border: 1px solid #48d9a5;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #ecfdf5;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.choice:hover,
+.choice:focus-visible,
+.preferences:hover,
+.preferences:focus-visible {
+  outline: none;
+  background: rgba(72, 217, 165, .14);
+}
+
+.preferences {
+  position: fixed;
+  z-index: 9999;
+  right: 16px;
+  bottom: 16px;
+  min-height: 36px;
+  border-color: rgba(7, 17, 31, .3);
+  padding: 8px 11px;
+  color: #07111f;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 8px 28px rgba(2, 6, 23, .15);
+  font-size: 11px;
+}
+
+.preferences:hover,
+.preferences:focus-visible {
+  background: #ecfdf5;
+}
+
+@media (max-width: 720px) {
+  .banner {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .actions {
+    min-width: 0;
+  }
+}
+

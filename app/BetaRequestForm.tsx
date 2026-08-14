@@ -2,6 +2,7 @@
 
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { LEAD_MARKER_KEY } from "./MetaPixel";
 import styles from "./marketing.module.css";
 
 export function BetaRequestForm() {
@@ -47,6 +48,7 @@ export function BetaRequestForm() {
       });
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error || "Invio non riuscito.");
+      sessionStorage.setItem(LEAD_MARKER_KEY, "1");
       window.location.assign("/grazie");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Invio non riuscito.");

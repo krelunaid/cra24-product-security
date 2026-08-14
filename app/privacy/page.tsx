@@ -25,6 +25,7 @@ export default function PrivacyPage() {
             <section>
               <h2>Dati trattati</h2>
               <p>Trattiamo i dati inseriti nel modulo: nome, azienda, email professionale, ruolo, tipologia di prodotto, area di interesse, eventuale sito e descrizione del caso. Per i tester approvati trattiamo inoltre l’identificativo stabile e l’email restituiti dal servizio di accesso, l’azienda associata, lo stato dell’abilitazione, l’avanzamento della sandbox e i dati tecnici strettamente necessari a sicurezza e funzionamento.</p>
+              <p>Solo dopo il tuo consenso, il Pixel Meta può trattare dati relativi al dispositivo, al browser, all’indirizzo IP, alla pagina visitata e alle interazioni essenziali per misurare la campagna. CRA24 registra gli eventi di visualizzazione pagina, apertura della candidatura e candidatura completata. Non inviamo a Meta nome, email, azienda, ruolo, descrizione del caso o altri contenuti del modulo.</p>
             </section>
             <section>
               <h2>Finalità e base giuridica</h2>
@@ -33,7 +34,13 @@ export default function PrivacyPage() {
                 <li>Verificare l’identità del tester, controllare l’abilitazione e salvare la sandbox richiesta: esecuzione della richiesta beta e misure precontrattuali, art. 6, par. 1, lett. b) GDPR.</li>
                 <li>Proteggere il sito da abusi e problemi di sicurezza: legittimo interesse, art. 6, par. 1, lett. f) GDPR.</li>
                 <li>Inviare aggiornamenti su CRA24: soltanto con consenso facoltativo, art. 6, par. 1, lett. a) GDPR.</li>
+                <li>Misurare l’efficacia delle campagne tramite Pixel Meta: soltanto con consenso facoltativo, art. 6, par. 1, lett. a) GDPR, e nel rispetto delle regole applicabili all’accesso e alla memorizzazione di informazioni sul dispositivo.</li>
               </ul>
+            </section>
+            <section>
+              <h2>Cookie e misurazione pubblicitaria</h2>
+              <p>Il Pixel Meta non viene caricato e non invia eventi finché non scegli “Accetta” nel pannello dedicato. Puoi continuare a usare il sito scegliendo “Rifiuta”. La scelta viene conservata nel browser per ricordare la preferenza.</p>
+              <p>Puoi modificare o revocare la scelta in qualsiasi momento tramite il pulsante “Privacy e cookie” presente nelle pagine del sito. La revoca impedisce nuovi eventi; può essere necessario eliminare i cookie già presenti tramite le impostazioni del browser.</p>
             </section>
             <section>
               <h2>Conferimento e decisioni</h2>
@@ -45,7 +52,7 @@ export default function PrivacyPage() {
             </section>
             <section>
               <h2>Destinatari e trasferimenti</h2>
-              <p>I dati possono essere trattati da persone autorizzate e da fornitori di hosting, autenticazione, posta elettronica e servizi tecnici necessari, incluso OpenAI per l’accesso e l’hosting della beta. Qualora un fornitore comporti trasferimenti fuori dallo Spazio economico europeo, questi avverranno nel rispetto del Capo V del GDPR.</p>
+              <p>I dati possono essere trattati da persone autorizzate e da fornitori di hosting, autenticazione, posta elettronica e servizi tecnici necessari, incluso OpenAI per l’accesso e l’hosting della beta. Se acconsenti alla misurazione pubblicitaria, gli eventi tecnici vengono inoltre trasmessi a Meta Platforms Ireland Limited secondo la relativa <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noreferrer">informativa privacy</a> e <a href="https://www.facebook.com/privacy/policies/cookies/" target="_blank" rel="noreferrer">informativa cookie</a>. Qualora un fornitore comporti trasferimenti fuori dallo Spazio economico europeo, questi avverranno nel rispetto del Capo V del GDPR.</p>
             </section>
             <section>
               <h2>I tuoi diritti</h2>
