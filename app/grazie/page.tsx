@@ -24,7 +24,7 @@ export default function ThankYouPage() {
             </p>
             <span className={styles.thankYouNote}><Mail size={14} /> Nessuna telefonata verrà programmata automaticamente.</span>
             <div className={styles.thankYouActions}>
-              <a className={styles.darkAction} href="/demo">Esplora la demo <ArrowRight size={15} /></a>
+              <a className={styles.darkAction} href="/accesso">Accedi alla demo <ArrowRight size={15} /></a>
               <Link className={styles.outlineAction} href="/">Torna alla homepage</Link>
             </div>
           </section>

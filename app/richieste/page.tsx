@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ArrowLeft, Inbox, LockKeyhole, Mail } from "lucide-react";
 import Link from "next/link";
 import { BetaRequestRecord, ensureBetaSchema, getBetaDatabase } from "../../db/beta";
+import { ensureDemoSchema } from "../../db/demo";
 import { chatGPTSignOutPath, requireChatGPTUser } from "../chatgpt-auth";
 import styles from "../marketing.module.css";
 
@@ -30,16 +31,24 @@ export default async function RequestsPage() {
 
   const database = getBetaDatabase();
   await ensureBetaSchema(database);
+  await ensureDemoSchema(database);
   const result = await database
     .prepare(`
-      SELECT id, full_name, company, email, role, product_type, priority,
-             website, case_summary, marketing_consent, status, created_at
-      FROM beta_requests
-      ORDER BY created_at DESC, id DESC
+      SELECT br.id, br.full_name, br.company, br.email, br.role, br.product_type, br.priority,
+             br.website, br.case_summary, br.marketing_consent,
+             CASE
+               WHEN da.status = 'active' AND (da.expires_at IS NULL OR da.expires_at > CURRENT_TIMESTAMP) THEN 'active'
+               WHEN da.status IS NOT NULL THEN da.status
+               ELSE br.status
+             END AS status,
+             br.created_at
+      FROM beta_requests br
+      LEFT JOIN demo_access da ON da.email = lower(trim(br.email))
+      ORDER BY br.created_at DESC, br.id DESC
       LIMIT 100
     `)
     .all<BetaRequestRecord>();
-  const requests = result.results ?? [];
+  const requests: BetaRequestRecord[] = result.results ?? [];
 
   return (
     <main className={styles.adminPage}>
@@ -60,6 +69,7 @@ export default async function RequestsPage() {
       ) : (
         <section className={styles.requestList}>
           {requests.map((item) => {
+            const accessActive = item.status === "active";
             const reply = `mailto:${item.email}?subject=${encodeURIComponent("CRA24 — risposta alla richiesta beta")}&body=${encodeURIComponent(`Buongiorno ${item.full_name},\n\ngrazie per la richiesta relativa a CRA24 e a ${item.company}.\n\n`)}`;
             return (
               <article key={item.id}>
@@ -74,10 +84,25 @@ export default async function RequestsPage() {
                 <div className={styles.requestMeta}>
                   <span><b>Prodotto</b>{item.product_type}</span>
                   <span><b>Priorità</b>{item.priority}</span>
+                  <span><b>Accesso</b>{accessActive ? "Attivo · 90 giorni" : item.status}</span>
                   <span><b>Aggiornamenti</b>{item.marketing_consent ? "Consenso dato" : "Non richiesti"}</span>
                 </div>
                 {item.case_summary && <p className={styles.requestSummary}>{item.case_summary}</p>}
-                <a className={styles.replyAction} href={reply}><Mail size={14} /> Rispondi via email</a>
+                <div className={styles.requestActions}>
+                  <form action="/api/admin/requests" method="post">
+                    <input type="hidden" name="email" value={item.email} />
+                    <input type="hidden" name="action" value={accessActive ? "revoke" : "approve"} />
+                    <button className={accessActive ? styles.revokeAction : styles.approveAction} type="submit">
+                      {accessActive ? "Revoca accesso" : "Approva sandbox"}
+                    </button>
+                  </form>
+                  <a className={styles.replyAction} href={reply}><Mail size={14} /> Rispondi via email</a>
+                  {accessActive && (
+                    <a className={styles.inviteAction} href={`mailto:${item.email}?subject=${encodeURIComponent("Accesso alla beta privata CRA24")}&body=${encodeURIComponent(`Buongiorno ${item.full_name},\n\nla richiesta di ${item.company} è stata approvata.\n\nPuoi accedere alla sandbox CRA24 da questo indirizzo:\nhttps://cra24.kreluna.it/accesso\n\nUsa lo stesso indirizzo email professionale con cui hai richiesto la beta (${item.email}). Se non hai ancora un account ChatGPT, durante l’accesso potrai crearne uno. CRA24 non riceve né conserva la tua password.\n\nLa sandbox contiene esclusivamente dati sintetici: non inserire dati riservati o relativi a macchine reali.\n\nCordiali saluti,\nCRA24 by Kreluna`)}`}>
+                      Invia istruzioni di accesso
+                    </a>
+                  )}
+                </div>
               </article>
             );
           })}

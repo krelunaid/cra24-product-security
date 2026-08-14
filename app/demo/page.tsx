@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import { ArrowRight, LockKeyhole } from "lucide-react";
+import Link from "next/link";
+import { ensureDemoSchema, getDemoAccess, getDemoDatabase } from "../../db/demo";
 import { CRA24App } from "../CRA24App";
-import { chatGPTSignOutPath, getChatGPTUser } from "../chatgpt-auth";
+import { chatGPTSignOutPath, requireChatGPTUser } from "../chatgpt-auth";
+import styles from "../marketing.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -11,16 +15,31 @@ export const metadata: Metadata = {
 };
 
 export default async function DemoPage() {
-  const user = await getChatGPTUser();
+  const user = await requireChatGPTUser("/demo");
+  const database = getDemoDatabase();
+  await ensureDemoSchema(database);
+  const access = await getDemoAccess(database, user.email, user.userId);
+
+  if (!access) {
+    return (
+      <main className={styles.adminDenied}>
+        <LockKeyhole size={25} />
+        <h1>Accesso beta non abilitato.</h1>
+        <p>L’indirizzo {user.email} non è ancora tra i tester approvati.</p>
+        <Link href="/accesso">Controlla l’accesso <ArrowRight size={14} /></Link>
+        <a href={chatGPTSignOutPath("/accesso")}>Usa un altro account</a>
+      </main>
+    );
+  }
 
   return (
     <CRA24App
       currentUser={{
-        displayName: user?.displayName ?? "Visitatore demo",
-        email: user?.email ?? "Nessun account richiesto",
+        displayName: user.displayName,
+        email: user.email,
       }}
-      signOutPath={user ? chatGPTSignOutPath("/demo") : undefined}
-      isAuthenticated={Boolean(user)}
+      company={access.company}
+      signOutPath={chatGPTSignOutPath("/accesso")}
     />
   );
 }

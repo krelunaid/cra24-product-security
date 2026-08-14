@@ -25,7 +25,8 @@ export function MarketingShell({ children, lightHeader = false }: { children: Re
             <Link href="/#prodotto">Prodotto</Link>
             <Link href="/#come-funziona">Come funziona</Link>
             <Link href="/#perche-cra24">Perché CRA24</Link>
-            <Link href="/demo">Demo</Link>
+            <Link href="/accesso">Demo</Link>
+            <Link href="/accesso">Accesso</Link>
           </nav>
           <Link className={styles.headerCta} href="/richiedi-beta">Richiedi la beta <ArrowUpRight size={14} /></Link>
         </div>
@@ -36,8 +37,9 @@ export function MarketingShell({ children, lightHeader = false }: { children: Re
           <CRA24Brand />
           <p>Product Security Operations per costruttori di prodotti con elementi digitali.</p>
           <div className={styles.footerLinks}>
-            <Link href="/demo">Demo</Link>
+            <Link href="/accesso">Demo</Link>
             <Link href="/richiedi-beta">Richiedi beta</Link>
+            <Link href="/accesso">Accesso tester</Link>
             <Link href="/privacy">Privacy</Link>
             <a href="mailto:cra24@kreluna.it">cra24@kreluna.it</a>
           </div>

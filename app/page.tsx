@@ -77,8 +77,8 @@ export default function Home() {
               le evidenze per la risposta.
             </p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryAction} href="/demo">
-                Prova la demo <span>7 min</span> <ArrowRight size={17} />
+              <a className={styles.primaryAction} href="/accesso">
+                Accedi alla demo <span>7 min</span> <ArrowRight size={17} />
               </a>
               <a className={styles.secondaryAction} href="/richiedi-beta">
                 Richiedi un test sui tuoi dati
@@ -294,7 +294,7 @@ export default function Home() {
             Il primo contatto avviene per email, senza chiamate obbligatorie.
           </p>
           <div className={styles.heroActions}>
-            <a className={styles.primaryAction} href="/demo">Apri la demo <ArrowRight size={17} /></a>
+            <a className={styles.primaryAction} href="/accesso">Accedi alla demo <ArrowRight size={17} /></a>
             <a className={styles.lightAction} href="/richiedi-beta">Richiedi la beta</a>
           </div>
         </section>

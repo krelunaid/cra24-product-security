@@ -52,6 +52,9 @@ export async function POST(request: Request) {
 
     const database = getBetaDatabase();
     await ensureBetaSchema(database);
+    await database
+      .prepare("DELETE FROM beta_requests WHERE created_at < datetime('now', '-12 months')")
+      .run();
 
     const duplicate = await database
       .prepare(`

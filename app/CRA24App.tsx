@@ -243,12 +243,12 @@ function initialsFor(value: string) {
 
 export function CRA24App({
   currentUser,
+  company,
   signOutPath,
-  isAuthenticated,
 }: {
   currentUser: { displayName: string; email: string };
-  signOutPath?: string;
-  isAuthenticated: boolean;
+  company: string;
+  signOutPath: string;
 }) {
   const [view, setView] = useState<View>("overview");
   const [incidents, setIncidents] = useState(initialIncidents);
@@ -264,40 +264,116 @@ export function CRA24App({
   const [demoStep, setDemoStep] = useState<number | null>(null);
   const [demoCompleteOpen, setDemoCompleteOpen] = useState(false);
   const [demoActions, setDemoActions] = useState<Record<number, boolean>>({});
-  const [storageReady, setStorageReady] = useState(false);
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [saveState, setSaveState] = useState<"loading" | "saved" | "saving" | "error">("loading");
+  const [settings, setSettings] = useState({ humanApproval: true, escalation: true });
+  const [tourCompleted, setTourCompleted] = useState(false);
+  const revisionRef = useRef(0);
+  const saveInFlightRef = useRef(false);
+  const saveQueuedRef = useRef(false);
+  const latestWorkspaceRef = useRef("");
   const importRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const currentUserInitials = initialsFor(currentUser.displayName);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const savedIncidents = sessionStorage.getItem("cra24-incidents");
-        const savedAssets = sessionStorage.getItem("cra24-assets");
-        if (savedIncidents) setIncidents(JSON.parse(savedIncidents));
-        if (savedAssets) setAssets(JSON.parse(savedAssets));
-        if (!sessionStorage.getItem("cra24-guided-demo-v1-seen")) setDemoWelcomeOpen(true);
-      } catch {
-        setDemoWelcomeOpen(true);
-      } finally {
-        setStorageReady(true);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    void fetch("/api/demo-state", { method: "POST", headers: { accept: "application/json" } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Workspace non disponibile");
+        return response.json() as Promise<{ revision?: number; state?: { version?: number; incidents?: Incident[]; assets?: Asset[]; settings?: { humanApproval?: boolean; escalation?: boolean }; tourSeen?: boolean; tourCompleted?: boolean } | null }>;
+      })
+      .then((result) => {
+        if (cancelled) return;
+        revisionRef.current = Number(result.revision) || 0;
+        const state = result.state;
+        if (state?.version === 1 && Array.isArray(state.incidents) && Array.isArray(state.assets)) {
+          setIncidents(state.incidents);
+          setAssets(state.assets.map((asset) => ({ ...asset, selected: false })));
+          setSettings({ humanApproval: state.settings?.humanApproval !== false, escalation: state.settings?.escalation !== false });
+          setTourCompleted(state.tourCompleted === true);
+          setDemoWelcomeOpen(state.tourSeen !== true);
+        } else {
+          setDemoWelcomeOpen(true);
+        }
+        setSaveState("saved");
+        setWorkspaceLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDemoWelcomeOpen(true);
+          setSaveState("error");
+        }
+      });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (storageReady) sessionStorage.setItem("cra24-incidents", JSON.stringify(incidents));
-  }, [incidents, storageReady]);
+    if (!workspaceLoaded) return;
+    const persistableAssets = assets.map((asset) => ({
+      id: asset.id,
+      model: asset.model,
+      customer: asset.customer,
+      site: asset.site,
+      release: asset.release,
+      exposure: asset.exposure,
+      status: asset.status,
+    }));
+    latestWorkspaceRef.current = JSON.stringify({ version: 1, incidents, assets: persistableAssets, settings, tourSeen: !demoWelcomeOpen, tourCompleted });
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (saveInFlightRef.current) {
+        saveQueuedRef.current = true;
+        return;
+      }
 
-  useEffect(() => {
-    if (storageReady) sessionStorage.setItem("cra24-assets", JSON.stringify(assets));
-  }, [assets, storageReady]);
+      const saveLatest = async (): Promise<void> => {
+        saveInFlightRef.current = true;
+        saveQueuedRef.current = false;
+        setSaveState("saving");
+        try {
+          const state = JSON.parse(latestWorkspaceRef.current) as unknown;
+          const response = await fetch("/api/demo-state", {
+            method: "PUT",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ revision: revisionRef.current, state }),
+          });
+          const result = await response.json() as { revision?: number; error?: string };
+          if (!response.ok) throw new Error(result.error || "Salvataggio non riuscito");
+          revisionRef.current = Number(result.revision) || revisionRef.current + 1;
+          setSaveState("saved");
+        } catch {
+          setSaveState("error");
+        } finally {
+          saveInFlightRef.current = false;
+          if (saveQueuedRef.current) void saveLatest();
+        }
+      };
+
+      if (!cancelled) void saveLatest();
+    }, 650);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [incidents, assets, settings, demoWelcomeOpen, tourCompleted, workspaceLoaded]);
 
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(""), 3200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   const activeIncident = incidents.find((incident) => incident.id === activeIncidentId) ?? incidents[0];
   const selectedAssets = assets.filter((asset) => asset.selected);
@@ -320,10 +396,10 @@ export function CRA24App({
   }
 
   function startDemo() {
-    sessionStorage.setItem("cra24-guided-demo-v1-seen", "true");
     setIncidents(initialIncidents.map((incident) => ({ ...incident })));
     setAssets(initialAssets.map((asset) => ({ ...asset, selected: false })));
     setDemoActions({});
+    setTourCompleted(false);
     setDemoWelcomeOpen(false);
     setDemoCompleteOpen(false);
     setActiveIncidentId(1);
@@ -334,7 +410,6 @@ export function CRA24App({
   }
 
   function exploreFreely() {
-    sessionStorage.setItem("cra24-guided-demo-v1-seen", "true");
     setDemoWelcomeOpen(false);
     setDemoStep(null);
   }
@@ -343,6 +418,7 @@ export function CRA24App({
     if (next < 0) return;
     if (next >= demoSteps.length) {
       setDemoStep(null);
+      setTourCompleted(true);
       setDemoCompleteOpen(true);
       return;
     }
@@ -442,8 +518,7 @@ export function CRA24App({
         notify("Il file non contiene righe importabili");
         return;
       }
-      setAssets((current) => [...imported, ...current]);
-      notify(`${imported.length} seriali importati nella sola sessione locale`);
+      notify(`${imported.length} righe lette correttamente. Nella beta pubblica i dati reali non vengono conservati; l’importazione persistente viene attivata nel pilot.`);
     };
     reader.readAsText(file);
   }
@@ -492,11 +567,11 @@ export function CRA24App({
           <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Chiudi menu"><X size={18} /></button>
         </div>
 
-        <button className="workspace-switcher" title="Scenario interamente dimostrativo">
-          <span className="workspace-avatar">AP</span>
-          <span><small>Scenario demo</small><strong>Aster Packaging · fittizia</strong></span>
+        <div className="workspace-switcher" title="Scenario interamente dimostrativo">
+          <span className="workspace-avatar">{company.slice(0, 2).toUpperCase()}</span>
+          <span><small>Sandbox privata · {company}</small><strong>Aster Packaging · scenario fittizio</strong></span>
           <ChevronDown size={15} />
-        </button>
+        </div>
 
         <nav aria-label="Navigazione principale">
           <span className="nav-label">Workspace</span>
@@ -523,7 +598,7 @@ export function CRA24App({
 
         <div className="sidebar-user">
           <span className="user-avatar">{currentUserInitials}</span>
-          <span><strong>{currentUser.displayName}</strong><small>{isAuthenticated ? "Utente autenticato" : "Accesso pubblico"}</small></span>
+          <span><strong>{currentUser.displayName}</strong><small>Tester autenticato</small></span>
           <button aria-label="Impostazioni profilo" onClick={() => setProfileOpen((open) => !open)}><ChevronRight size={16} /></button>
         </div>
       </aside>
@@ -538,22 +613,22 @@ export function CRA24App({
           </div>
           <label className="global-search">
             <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca CVE, seriale, cliente o componente…" />
+            <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cerca CVE, seriale, cliente o componente…" />
             <kbd>⌘ K</kbd>
           </label>
           <div className="top-actions">
             <Link className="site-return" href="/">Sito CRA24</Link>
             <button className="demo-launch" onClick={startDemo}><Play size={14} fill="currentColor" /><span>Demo guidata</span></button>
-            <span className="sync-state demo-data-state"><Database size={13} /> Dataset dimostrativo</span>
-            <button className="icon-button" aria-label="Notifiche"><Bell size={18} /><i /></button>
+            <span className={`sync-state demo-data-state ${saveState === "error" ? "sync-error" : ""}`}><Database size={13} /> {saveState === "loading" ? "Caricamento…" : saveState === "saving" ? "Salvataggio…" : saveState === "error" ? "Salvataggio non riuscito" : "Sandbox salvata"}</span>
+            <button className="icon-button" aria-label="Notifiche" onClick={() => notify("Nessuna notifica esterna: nella sandbox gli avvisi sono soltanto simulati")}><Bell size={18} /><i /></button>
             <button className="top-avatar" onClick={() => setProfileOpen((open) => !open)} aria-label="Apri profilo">{currentUserInitials}</button>
           </div>
           {profileOpen && (
             <div className="profile-popover">
               <div className="profile-identity"><span>{currentUserInitials}</span><div><strong>{currentUser.displayName}</strong><small>{currentUser.email}</small></div></div>
-              <em><CheckCircle2 size={13} /> {isAuthenticated ? "Accesso verificato con ChatGPT" : "Demo pubblica · nessun login"}</em>
+              <em><CheckCircle2 size={13} /> Accesso verificato · sandbox separata</em>
               <button onClick={() => { navigate("settings"); setProfileOpen(false); }}>Impostazioni workspace</button>
-              {signOutPath && <a href={signOutPath}>Esci dall&apos;account</a>}
+              <a href={signOutPath}>Esci dall&apos;account</a>
             </div>
           )}
         </header>
@@ -606,7 +681,7 @@ export function CRA24App({
           {view === "components" && <ComponentsView query={normalizedQuery} notify={notify} />}
           {view === "reports" && <ReportsView exportIncident={exportIncident} notify={notify} demoStep={demoStep} />}
           {view === "integrations" && <IntegrationsView notify={notify} />}
-          {view === "settings" && <SettingsView notify={notify} />}
+          {view === "settings" && <SettingsView notify={notify} settings={settings} setSettings={setSettings} />}
         </div>
       </main>
 
@@ -616,7 +691,7 @@ export function CRA24App({
         <div className="modal-backdrop" role="presentation">
           <form className="modal-card" onSubmit={addIncident}>
             <div className="modal-head"><div><span className="eyebrow">Nuova segnalazione</span><h2>Apri un&apos;incident room</h2></div><button type="button" onClick={() => setNewIncidentOpen(false)} aria-label="Chiudi"><X size={19} /></button></div>
-            <p className="modal-intro">Inserisci le informazioni già disponibili. CRA24 simulerà il triage e conserverà le modifiche soltanto nella sessione locale.</p>
+            <p className="modal-intro">Inserisci soltanto informazioni fittizie. CRA24 simulerà il triage e salverà l’attività nella tua sandbox privata.</p>
             <div className="form-grid">
               <label><span>Identificativo</span><input name="cve" placeholder="CVE-2026-00000" required /></label>
               <label><span>Severità</span><select name="severity" defaultValue="Alta"><option>Critica</option><option>Alta</option><option>Media</option></select></label>
@@ -802,7 +877,7 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
             <button className={tab === "impact" ? "active" : ""} onClick={() => setTab("impact")}>Impatto</button>
             <button className={tab === "assets" ? "active" : ""} onClick={() => setTab("assets")}>Seriali coinvolti <span>{incident.serials}</span></button>
             <button className={tab === "timeline" ? "active" : ""} onClick={() => setTab("timeline")}>Timeline</button>
-            <button className="more-button" aria-label="Altre opzioni"><SlidersHorizontal size={17} /></button>
+            <button className="more-button" aria-label="Altre opzioni disponibili nel pilot" disabled title="Disponibile nel pilot"><SlidersHorizontal size={17} /></button>
           </div>
 
           {tab === "impact" && (
@@ -841,7 +916,7 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
               <TimelineItem time="08:47" title="Impact graph completato" copy="127 seriali e 31 clienti identificati sulle release 5.10–5.12." icon={<Link2 size={16} />} />
               <TimelineItem time="09:06" title="Triage assegnato" copy="Laura Bianchi ha preso in carico la valutazione di exploitability." icon={<Users size={16} />} />
               <TimelineItem time="09:28" title="Contatto fornitore simulato" copy="Esempio di richiesta patch: nessun messaggio esterno è stato inviato." icon={<Bell size={16} />} pending />
-              {demoActionRecorded && <TimelineItem time="Adesso" title="Pianificazione demo registrata" copy="Patch pianificata per PKG-24-01874 nella sola sessione locale. Nessun messaggio esterno inviato." icon={<PackageCheck size={16} />} />}
+              {demoActionRecorded && <TimelineItem time="Adesso" title="Pianificazione demo registrata" copy="Patch pianificata per PKG-24-01874 nella sandbox privata. Nessun messaggio esterno inviato." icon={<PackageCheck size={16} />} />}
             </div>
           )}
         </article>
@@ -861,7 +936,7 @@ function Overview({ incident, tab, setTab, assets, selectedAssets, setAssets, pa
             {incident.status !== "Triage" && incident.status !== "Chiuso" && <button className="button primary wide" onClick={() => updateIncidentStatus("Monitoraggio", 81)}>Conferma triage <ArrowRight size={16} /></button>}
             {incident.status === "Monitoraggio" && <button className="button secondary wide" onClick={() => updateIncidentStatus("Chiuso", 100)}>Chiudi incidente</button>}
             {incident.status === "Chiuso" && <button className="button secondary wide" onClick={exportIncident}><Download size={16} /> Scarica esempio dossier</button>}
-            <small>Le azioni della beta restano nella sessione locale del browser.</small>
+            <small>Le azioni vengono salvate nella tua sandbox privata e non producono effetti esterni.</small>
           </div>
         </aside>
       </section>
@@ -879,7 +954,7 @@ function IncidentsView({ incidents, activeId, select, create }: { incidents: Inc
   const visible = incidents.filter((incident) => severity === "Tutte" || incident.severity === severity);
   return <>
     <section className="page-heading"><div><span className="eyebrow">Product security</span><h1>Incidenti</h1><p>Valuta, coordina e documenta ogni evento lungo l&apos;intero ciclo CRA.</p></div><button className="button primary" onClick={create}><Plus size={17} /> Nuovo incidente</button></section>
-    <div className="filter-row"><div className="segmented">{["Tutte", "Critica", "Alta", "Media"].map((item) => <button key={item} className={severity === item ? "active" : ""} onClick={() => setSeverity(item)}>{item}</button>)}</div><button className="button secondary compact"><ListFilter size={15} /> Filtri</button></div>
+    <div className="filter-row"><div className="segmented">{["Tutte", "Critica", "Alta", "Media"].map((item) => <button key={item} className={severity === item ? "active" : ""} onClick={() => setSeverity(item)}>{item}</button>)}</div><button className="button secondary compact" disabled title="Filtri avanzati disponibili nel pilot"><ListFilter size={15} /> Filtri avanzati</button></div>
     <section className="incident-list">{visible.map((incident) => <button key={incident.id} className={`incident-list-card ${activeId === incident.id ? "selected" : ""}`} onClick={() => select(incident.id)}><span className={`incident-severity-bar ${incident.severity.toLowerCase()}`} /><div className="incident-list-main"><div><code>{incident.cve}</code><span className={`severity ${incident.severity.toLowerCase()}`}>{incident.severity}</span><span className={`status ${statusClass(incident.status)}`}>{incident.status}</span></div><h3>{incident.title}</h3><p>{incident.component} · {incident.version}</p></div><div className="incident-list-impact"><span><Box size={15} />{incident.serials} seriali</span><span><Users size={15} />{incident.customers} clienti</span></div><div className="incident-list-progress"><span>{incident.progress}%</span><div><i style={{ width: `${incident.progress}%` }} /></div><small>{incident.owner}</small></div><ChevronRight size={18} /></button>)}</section>
   </>;
 }
@@ -888,14 +963,14 @@ function AssetsView({ assets, setAssets, importCsv, exportAssets }: { assets: As
   const [status, setStatus] = useState("Tutti gli stati");
   const visible = assets.filter((asset) => status === "Tutti gli stati" || asset.status === status);
   return <>
-    <section className="page-heading"><div><span className="eyebrow">Installed base · dati demo</span><h1>Parco installato</h1><p>Configurazioni fittizie usate per provare la mappatura. Un CSV importato resta soltanto nel browser.</p></div><div className="heading-actions"><button className="button secondary" onClick={exportAssets}><Download size={16} /> Esporta CSV demo</button><button className="button primary" onClick={importCsv}><Upload size={16} /> Importa CSV locale</button></div></section>
+    <section className="page-heading"><div><span className="eyebrow">Installed base · dati demo</span><h1>Parco installato</h1><p>Configurazioni fittizie usate per provare la mappatura. Non caricare dati reali nella beta.</p></div><div className="heading-actions"><button className="button secondary" onClick={exportAssets}><Download size={16} /> Esporta CSV demo</button><button className="button primary" onClick={importCsv}><Upload size={16} /> Verifica CSV localmente</button></div></section>
     <section className="asset-summary"><div><strong>2.418</strong><span>Seriali demo</span></div><div><strong>2.276</strong><span>Release note nello scenario</span></div><div><strong>98</strong><span>Da classificare</span></div><div><strong>14</strong><span>Paesi simulati</span></div></section>
-    <section className="panel registry-panel"><div className="registry-toolbar"><div><h3>Registro macchine</h3><span>{visible.length} risultati visualizzati</span></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option>Tutti gli stati</option><option>Da verificare</option><option>Patch pianificata</option><option>Mitigato</option><option>Non esposto</option></select></div><div className="table-scroll"><table className="registry-table"><thead><tr><th><input type="checkbox" aria-label="Seleziona tutti" /></th><th>Seriale / modello</th><th>Cliente / sito</th><th>Release</th><th>Esposizione</th><th>Stato</th><th /></tr></thead><tbody>{visible.map((asset) => <AssetRow key={asset.id} asset={asset} toggle={() => setAssets((current) => current.map((row) => row.id === asset.id ? { ...row, selected: !row.selected } : row))} />)}</tbody></table></div></section>
+    <section className="panel registry-panel"><div className="registry-toolbar"><div><h3>Registro macchine</h3><span>{visible.length} risultati visualizzati</span></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option>Tutti gli stati</option><option>Da verificare</option><option>Patch pianificata</option><option>Mitigato</option><option>Non esposto</option></select></div><div className="table-scroll"><table className="registry-table"><thead><tr><th><input type="checkbox" aria-label="Seleziona tutti" checked={visible.length > 0 && visible.every((asset) => asset.selected)} onChange={(event) => { const visibleIds = new Set(visible.map((asset) => asset.id)); setAssets((current) => current.map((asset) => visibleIds.has(asset.id) ? { ...asset, selected: event.target.checked } : asset)); }} /></th><th>Seriale / modello</th><th>Cliente / sito</th><th>Release</th><th>Esposizione</th><th>Stato</th><th /></tr></thead><tbody>{visible.map((asset) => <AssetRow key={asset.id} asset={asset} toggle={() => setAssets((current) => current.map((row) => row.id === asset.id ? { ...row, selected: !row.selected } : row))} />)}</tbody></table></div></section>
   </>;
 }
 
 function AssetRow({ asset, toggle }: { asset: Asset; toggle: () => void }) {
-  return <tr><td><input type="checkbox" checked={Boolean(asset.selected)} onChange={toggle} aria-label={`Seleziona ${asset.id}`} /></td><td><strong>{asset.id}</strong><small>{asset.model}</small></td><td><strong>{asset.customer}</strong><small>{asset.site}</small></td><td><code>{asset.release}</code></td><td><span className={`exposure ${asset.exposure === "Remota" ? "remote" : ""}`}>{asset.exposure}</span></td><td><em className={`asset-status ${statusClass(asset.status)}`}>{asset.status}</em></td><td><button className="row-action" aria-label={`Apri ${asset.id}`}><ChevronRight size={16} /></button></td></tr>;
+  return <tr><td><input type="checkbox" checked={Boolean(asset.selected)} onChange={toggle} aria-label={`Seleziona ${asset.id}`} /></td><td><strong>{asset.id}</strong><small>{asset.model}</small></td><td><strong>{asset.customer}</strong><small>{asset.site}</small></td><td><code>{asset.release}</code></td><td><span className={`exposure ${asset.exposure === "Remota" ? "remote" : ""}`}>{asset.exposure}</span></td><td><em className={`asset-status ${statusClass(asset.status)}`}>{asset.status}</em></td><td><span className="row-action" aria-hidden="true"><ChevronRight size={16} /></span></td></tr>;
 }
 
 function ComponentsView({ query, notify }: { query: string; notify: (message: string) => void }) {
@@ -904,7 +979,7 @@ function ComponentsView({ query, notify }: { query: string; notify: (message: st
 }
 
 function ReportsView({ exportIncident, notify, demoStep }: { exportIncident: () => void; notify: (message: string) => void; demoStep: number | null }) {
-  return <><section className="page-heading"><div><span className="eyebrow">Evidence vault · dati demo</span><h1>Dossier & report</h1><p>Documenti dimostrativi organizzati per la revisione umana.</p></div><button className="button primary" onClick={exportIncident}><FileCheck2 size={16} /> Genera dossier demo</button></section><section className={`report-callout ${demoStep === 5 ? "demo-focus" : ""}`}><div className="report-callout-icon"><ShieldEllipsis size={25} /></div><div><span>Simulazione CRA</span><h2>Il workflow di risposta è configurato all&apos;82%</h2><p>I documenti mostrati non sono certificati, firmati o inviati: servono a validare struttura e processo.</p></div><button onClick={() => notify("Checklist dimostrativa aperta")}>Vedi checklist <ArrowRight size={16} /></button></section><section className="panel reports-table"><div className="section-title"><div><h3>Documenti dello scenario</h3><p>Bozze, assessment ed esempi di dossier</p></div><button><ListFilter size={15} /> Filtra</button></div>{reportRows.map((report) => <div className="report-row" key={report.title}><span className="report-icon"><FileText size={18} /></span><div><strong>{report.title}</strong><small>{report.type} · {report.date}</small></div><span>{report.owner}</span><em className={`report-state ${statusClass(report.state)}`}>{report.state}</em><button onClick={() => notify(`${report.title}: anteprima dimostrativa`)} aria-label={`Apri ${report.title}`}><Download size={16} /></button></div>)}</section></>;
+  return <><section className="page-heading"><div><span className="eyebrow">Evidence vault · dati demo</span><h1>Dossier & report</h1><p>Documenti dimostrativi organizzati per la revisione umana.</p></div><button className="button primary" onClick={exportIncident}><FileCheck2 size={16} /> Genera dossier demo</button></section><section className={`report-callout ${demoStep === 5 ? "demo-focus" : ""}`}><div className="report-callout-icon"><ShieldEllipsis size={25} /></div><div><span>Simulazione CRA</span><h2>Il workflow di risposta è configurato all&apos;82%</h2><p>I documenti mostrati non sono certificati, firmati o inviati: servono a validare struttura e processo.</p></div><button onClick={() => notify("Checklist dimostrativa: 4 evidenze presenti, conferma fornitore ancora mancante")}>Verifica checklist <ArrowRight size={16} /></button></section><section className="panel reports-table"><div className="section-title"><div><h3>Documenti dello scenario</h3><p>Bozze, assessment ed esempi di dossier</p></div></div>{reportRows.map((report) => <div className="report-row" key={report.title}><span className="report-icon"><FileText size={18} /></span><div><strong>{report.title}</strong><small>{report.type} · {report.date}</small></div><span>{report.owner}</span><em className={`report-state ${statusClass(report.state)}`}>{report.state}</em><button onClick={() => notify(`${report.title}: anteprima dimostrativa`)} aria-label={`Apri ${report.title}`}><Eye size={16} /></button></div>)}</section></>;
 }
 
 function IntegrationsView({ notify }: { notify: (message: string) => void }) {
@@ -917,10 +992,8 @@ function IntegrationsView({ notify }: { notify: (message: string) => void }) {
   return <><section className="page-heading"><div><span className="eyebrow">Data fabric · architettura proposta</span><h1>Integrazioni</h1><p>Questa pagina illustra le fonti previste: nella beta nessun sistema aziendale è collegato.</p></div></section><section className="integration-list">{items.map((item) => <article className="integration-card" key={item.name}><span className="integration-icon">{item.icon}</span><div><h3>{item.name}</h3><p>{item.copy}</p><small>{item.detail}</small></div><em className={item.state === "Simulato" ? "simulated" : "configure"}><span />{item.state}</em><button className="button secondary compact" onClick={() => notify(`${item.name}: flusso illustrativo, connettore non attivo`)}>Come funzionerebbe</button></article>)}</section></>;
 }
 
-function SettingsView({ notify }: { notify: (message: string) => void }) {
-  const [humanApproval, setHumanApproval] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  return <><section className="page-heading"><div><span className="eyebrow">Workspace</span><h1>Impostazioni</h1><p>Regole operative, approvazioni e contatti del processo di risposta.</p></div><button className="button primary" onClick={() => notify("Impostazioni salvate")}>Salva modifiche</button></section><section className="settings-grid"><article className="panel settings-card"><div><h3>Governance</h3><p>Controlli prima della generazione dei documenti.</p></div><SettingToggle label="Approvazione umana obbligatoria" copy="Nessuna valutazione o comunicazione viene marcata come finale senza un approvatore." value={humanApproval} onChange={setHumanApproval} /><SettingToggle label="Escalation automatica" copy="Avvisa il responsabile quando rimangono meno di 6 ore alla scadenza." value={notifications} onChange={setNotifications} /></article><article className="panel settings-card"><div><h3>Referenti CRA</h3><p>Persone autorizzate a coordinare e approvare la risposta.</p></div><div className="contact-row"><span>LB</span><div><strong>Laura Bianchi</strong><small>Referente principale</small></div><em>Attivo</em></div><div className="contact-row"><span>MR</span><div><strong>Marco Riva</strong><small>Referente sostitutivo</small></div><em className="pending">Da verificare</em></div><button className="text-button" onClick={() => notify("Invito referente preparato")}><Plus size={15} /> Aggiungi referente</button></article><article className="panel settings-card full"><div><h3>Principio di sicurezza</h3><p>CRA24 supporta le decisioni, non sostituisce il giudizio tecnico o legale.</p></div><div className="safety-rule"><ShieldCheck size={22} /><div><strong>Evidence before confidence</strong><p>Quando i dati non sono sufficienti, il sistema mostra “evidenza insufficiente” e impedisce qualsiasi esito verde automatico.</p></div><span>Attivo</span></div></article></section></>;
+function SettingsView({ notify, settings, setSettings }: { notify: (message: string) => void; settings: { humanApproval: boolean; escalation: boolean }; setSettings: React.Dispatch<React.SetStateAction<{ humanApproval: boolean; escalation: boolean }>> }) {
+  return <><section className="page-heading"><div><span className="eyebrow">Workspace</span><h1>Impostazioni</h1><p>Regole operative della sandbox privata.</p></div><button className="button primary" onClick={() => notify("Impostazioni salvate nella tua sandbox")}>Salva ora</button></section><section className="settings-grid"><article className="panel settings-card"><div><h3>Governance</h3><p>Controlli prima della generazione dei documenti.</p></div><SettingToggle label="Approvazione umana obbligatoria" copy="Nessuna valutazione o comunicazione viene marcata come finale senza un approvatore." value={settings.humanApproval} onChange={(value) => setSettings((current) => ({ ...current, humanApproval: value }))} /><SettingToggle label="Escalation nello scenario" copy="Mostra le priorità simulate quando la scadenza si avvicina." value={settings.escalation} onChange={(value) => setSettings((current) => ({ ...current, escalation: value }))} /></article><article className="panel settings-card"><div><h3>Referenti dello scenario</h3><p>Persone fittizie usate per dimostrare responsabilità e approvazioni.</p></div><div className="contact-row"><span>LB</span><div><strong>Laura Bianchi</strong><small>Referente fittizio</small></div><em>Scenario</em></div><div className="contact-row"><span>MR</span><div><strong>Marco Riva</strong><small>Referente fittizio</small></div><em className="pending">Scenario</em></div><button className="text-button" disabled title="Disponibile nel pilot"><Plus size={15} /> Referenti reali nel pilot</button></article><article className="panel settings-card full"><div><h3>Principio di sicurezza</h3><p>CRA24 supporta le decisioni, non sostituisce il giudizio tecnico o legale.</p></div><div className="safety-rule"><ShieldCheck size={22} /><div><strong>Evidence before confidence</strong><p>Quando i dati non sono sufficienti, il sistema mostra “evidenza insufficiente” e impedisce qualsiasi esito verde automatico.</p></div><span>Attivo</span></div></article></section></>;
 }
 
 function SettingToggle({ label, copy, value, onChange }: { label: string; copy: string; value: boolean; onChange: (value: boolean) => void }) {
