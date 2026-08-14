@@ -6,6 +6,7 @@ import styles from "./MetaPixel.module.css";
 const META_PIXEL_ID = "1347647340858998";
 const CONSENT_KEY = "cra24_meta_tracking_consent_v1";
 export const LEAD_MARKER_KEY = "cra24_beta_form_submitted";
+export const META_MARKETING_PATHS = new Set(["/", "/richiedi-beta", "/grazie", "/privacy"]);
 
 type Consent = "accepted" | "rejected";
 type Fbq = ((...args: unknown[]) => void) & {
@@ -94,6 +95,8 @@ export function MetaPixel() {
   const [showChoice, setShowChoice] = useState(false);
 
   useEffect(() => {
+    const path = window.location.pathname.replace(/\/$/, "") || "/";
+    if (!META_MARKETING_PATHS.has(path)) return;
     const timer = window.setTimeout(() => {
       const stored = localStorage.getItem(CONSENT_KEY);
       const initial = stored === "accepted" || stored === "rejected" ? stored : null;

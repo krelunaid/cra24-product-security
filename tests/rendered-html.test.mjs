@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 import { hasSameOrigin, isOwnerEmail, normalizeEmail, sanitizeDemoState } from "../db/demo-logic.ts";
+import {
+  createMailtoLink,
+  csvCell,
+  isValidProfessionalEmail,
+  normalizeWebsite,
+  safeDownloadName,
+} from "../lib/security.ts";
 
 const projectRoot = new URL("../", import.meta.url);
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -48,6 +55,31 @@ test("server-renders the premium CRA24 public website", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
+test("applies browser security headers and isolates advertising from private routes", async () => {
+  const marketing = await request("/");
+  const accessPage = await request("/api/not-found", { authenticated: false });
+  const marketingPolicy = marketing.headers.get("content-security-policy") ?? "";
+  const privatePolicy = accessPage.headers.get("content-security-policy") ?? "";
+
+  assert.match(marketingPolicy, /frame-ancestors 'none'/);
+  assert.match(marketingPolicy, /connect\.facebook\.net/);
+  assert.match(privatePolicy, /frame-ancestors 'none'/);
+  assert.doesNotMatch(privatePolicy, /facebook/i);
+  assert.equal(marketing.headers.get("x-frame-options"), "DENY");
+  assert.equal(marketing.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(marketing.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
+  assert.match(marketing.headers.get("strict-transport-security") ?? "", /max-age=31536000/);
+  assert.match(marketing.headers.get("permissions-policy") ?? "", /camera=\(\)/);
+  assert.match(accessPage.headers.get("cache-control") ?? "", /no-store/);
+});
+
+test("canonical metadata cannot be poisoned by forwarded host headers", async () => {
+  const response = await request("/", { headers: { "x-forwarded-host": "evil.example", "x-forwarded-proto": "http" } });
+  const html = await response.text();
+  assert.doesNotMatch(html, /evil\.example/);
+  assert.match(html, /https:\/\/cra24\.kreluna\.it\/og\.png/);
+});
+
 test("renders the beta, privacy and confirmation journey", async () => {
   const beta = await request("/richiedi-beta");
   const privacy = await request("/privacy");
@@ -83,11 +115,58 @@ test("normalizes approval identity and rejects cross-origin writes", () => {
   assert.equal(isOwnerEmail("other@example.com"), false);
   assert.equal(hasSameOrigin("https://cra24.kreluna.it/api/demo-state", "https://cra24.kreluna.it"), true);
   assert.equal(hasSameOrigin("https://cra24.kreluna.it/api/demo-state", "https://evil.example"), false);
+  assert.equal(hasSameOrigin("https://cra24.kreluna.it/api/demo-state", "http://cra24.kreluna.it"), false);
+  assert.equal(hasSameOrigin("https://cra24.kreluna.it/api/demo-state", "https://cra24.kreluna.it", "cross-site"), false);
   assert.equal(hasSameOrigin("https://cra24.kreluna.it/api/demo-state", null), false);
 });
 
+test("rejects forged and unbounded public beta requests before touching storage", async () => {
+  const body = JSON.stringify({ email: "tester@example.com" });
+  const crossOrigin = await request("/api/beta", {
+    method: "POST",
+    headers: { origin: "https://evil.example", "content-type": "text/plain", "content-length": String(body.length) },
+    body,
+  });
+  assert.equal(crossOrigin.status, 403);
+
+  const wrongType = await request("/api/beta", {
+    method: "POST",
+    headers: { origin: "https://cra24.kreluna.it", "sec-fetch-site": "same-origin", "content-type": "text/plain", "content-length": String(body.length) },
+    body,
+  });
+  assert.equal(wrongType.status, 415);
+
+  const missingLength = await request("/api/beta", {
+    method: "POST",
+    headers: { origin: "https://cra24.kreluna.it", "sec-fetch-site": "same-origin", "content-type": "application/json" },
+    body,
+  });
+  assert.equal(missingLength.status, 411);
+
+  const oversized = await request("/api/beta", {
+    method: "POST",
+    headers: { origin: "https://cra24.kreluna.it", "sec-fetch-site": "same-origin", "content-type": "application/json", "content-length": "20000" },
+    body,
+  });
+  assert.equal(oversized.status, 413);
+});
+
+test("hardens contact links, URLs, filenames and spreadsheet exports", () => {
+  assert.equal(isValidProfessionalEmail("person+beta@example.com"), true);
+  assert.equal(isValidProfessionalEmail("victim@example.com?bcc=attacker@example.com"), false);
+  assert.equal(createMailtoLink("victim@example.com?bcc=attacker@example.com", "Hello", "Body"), null);
+  const mailto = createMailtoLink("Person+Beta@Example.com", "CRA24 test", "Line one\nLine two");
+  assert.match(mailto ?? "", /^mailto:person%2Bbeta%40example\.com\?/);
+  assert.doesNotMatch(mailto ?? "", /bcc=/i);
+  assert.equal(normalizeWebsite("javascript:alert(1)"), null);
+  assert.match(normalizeWebsite("https://example.com/path#secret") ?? "", /^https:\/\/example\.com\/path$/);
+  assert.equal(csvCell("=HYPERLINK(\"https://evil\")"), `"'=HYPERLINK(""https://evil"")"`);
+  assert.equal(csvCell(`safe "quote"`), `"safe ""quote"""`);
+  assert.equal(safeDownloadName("../../CVE 2026/1", "json"), "CVE-2026-1.json");
+});
+
 test("ships finished metadata, persistence, consent-gated measurement and no preview code", async () => {
-  const [home, accessPage, demo, layout, app, stateRoute, demoDb, adminRoute, hosting, packageJson, metaPixel, betaForm, privacy] = await Promise.all([
+  const [home, accessPage, demo, layout, app, stateRoute, demoDb, adminRoute, betaRoute, workerSource, hosting, packageJson, metaPixel, betaForm, privacy] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/accesso/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/demo/page.tsx", import.meta.url), "utf8"),
@@ -96,6 +175,8 @@ test("ships finished metadata, persistence, consent-gated measurement and no pre
     readFile(new URL("../app/api/demo-state/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/demo.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/requests/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/beta/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/MetaPixel.tsx", import.meta.url), "utf8"),
@@ -115,20 +196,31 @@ test("ships finished metadata, persistence, consent-gated measurement and no pre
   assert.doesNotMatch(app, /sessionStorage/);
   assert.match(stateRoute, /getChatGPTUser/);
   assert.match(stateRoute, /getDemoAccess/);
-  assert.match(stateRoute, /content-length/);
+  assert.match(stateRoute, /parseRequiredContentLength/);
   assert.match(stateRoute, /hasSameOrigin/);
-  assert.match(demoDb, /WHERE user_id = \?1 AND status = 'active'/);
+  assert.match(demoDb, /WHERE user_id = \?1 AND email = \?2 AND status = 'active'/);
+  assert.match(demoDb, /SET user_id = NULL, status = 'revoked'[\s\S]*WHERE user_id = \?1 AND email != \?2/);
   assert.match(demoDb, /UPDATE demo_access[\s\S]*WHERE email = \?2 AND status = 'active' AND user_id IS NULL/);
   assert.match(adminRoute, /isOwnerEmail/);
+  assert.match(adminRoute, /setBetaAccess[\s\S]*actorUserId/);
+  assert.match(betaRoute, /beta-global-15m/);
+  assert.match(betaRoute, /parseRequiredContentLength/);
+  assert.ok(
+    betaRoute.indexOf('"beta-ip-15m"') < betaRoute.indexOf('"beta-global-15m"'),
+    "blocked IPs must not consume the global beta budget",
+  );
+  assert.match(workerSource, /content-security-policy/);
+  assert.doesNotMatch(workerSource, /handleImageOptimization|_vinext\/image/);
   assert.match(hosting, /"d1": "DB"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.match(layout, /MetaPixel/);
   assert.match(metaPixel, /cra24_meta_tracking_consent_v1/);
+  assert.match(metaPixel, /META_MARKETING_PATHS/);
   assert.match(metaPixel, /consent !== "accepted"/);
   assert.match(metaPixel, /ViewContent/);
   assert.match(metaPixel, /Lead/);
   assert.doesNotMatch(metaPixel, /<noscript|tr\?id=/);
   assert.match(betaForm, /LEAD_MARKER_KEY/);
-  assert.match(privacy, /Pixel Meta non viene caricato/);
+  assert.match(privacy, /Pixel è escluso tecnicamente/);
   await assert.rejects(access(new URL("app/_sites-preview", projectRoot)));
 });

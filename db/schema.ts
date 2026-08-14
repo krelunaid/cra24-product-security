@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const betaRequests = sqliteTable(
   "beta_requests",
@@ -24,6 +24,7 @@ export const betaRequests = sqliteTable(
   (table) => [
     index("idx_beta_requests_email_created").on(table.email, table.createdAt),
     index("idx_beta_requests_status_created").on(table.status, table.createdAt),
+    index("idx_beta_requests_created").on(table.createdAt),
   ],
 );
 
@@ -45,8 +46,45 @@ export const demoAccess = sqliteTable(
     uniqueIndex("idx_demo_access_email").on(table.email),
     uniqueIndex("idx_demo_access_user_id").on(table.userId),
     index("idx_demo_access_status").on(table.status),
+    index("idx_demo_access_expires").on(table.expiresAt),
   ],
 );
+
+export const requestRateLimits = sqliteTable(
+  "request_rate_limits",
+  {
+    scope: text("scope").notNull(),
+    actorHash: text("actor_hash").notNull(),
+    windowStart: integer("window_start").notNull(),
+    count: integer("count").notNull().default(0),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.scope, table.actorHash, table.windowStart] }),
+    index("idx_request_rate_limits_updated").on(table.updatedAt),
+  ],
+);
+
+export const adminAuditLog = sqliteTable(
+  "admin_audit_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actorUserId: text("actor_user_id").notNull(),
+    actorEmail: text("actor_email").notNull(),
+    action: text("action").notNull(),
+    targetEmail: text("target_email").notNull(),
+    targetCompany: text("target_company").notNull().default(""),
+    requestId: text("request_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [index("idx_admin_audit_log_created").on(table.createdAt)],
+);
+
+export const projectMaintenance = sqliteTable("project_maintenance", {
+  name: text("name").primaryKey(),
+  leaseUntil: integer("lease_until").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const demoWorkspaces = sqliteTable(
   "demo_workspaces",

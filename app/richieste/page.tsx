@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ArrowLeft, Inbox, LockKeyhole, Mail } from "lucide-react";
 import { BetaRequestRecord, ensureBetaSchema, getBetaDatabase } from "../../db/beta";
 import { ensureDemoSchema } from "../../db/demo";
+import { createMailtoLink } from "../../lib/security";
 import { chatGPTSignOutPath, requireChatGPTUser } from "../chatgpt-auth";
 import styles from "../marketing.module.css";
 
@@ -37,13 +38,13 @@ export default async function RequestsPage() {
       SELECT br.id, br.full_name, br.company, br.email, br.role, br.product_type, br.priority,
              br.website, br.case_summary, br.marketing_consent,
              CASE
-               WHEN da.status = 'active' AND (da.expires_at IS NULL OR da.expires_at > CURRENT_TIMESTAMP) THEN 'active'
+               WHEN da.status = 'active' AND da.expires_at > CURRENT_TIMESTAMP THEN 'active'
                WHEN da.status IS NOT NULL THEN da.status
                ELSE br.status
              END AS status,
              br.created_at
       FROM beta_requests br
-      LEFT JOIN demo_access da ON da.email = lower(trim(br.email))
+      LEFT JOIN demo_access da ON da.email = br.email
       ORDER BY br.created_at DESC, br.id DESC
       LIMIT 100
     `)
@@ -70,7 +71,16 @@ export default async function RequestsPage() {
         <section className={styles.requestList}>
           {requests.map((item) => {
             const accessActive = item.status === "active";
-            const reply = `mailto:${item.email}?subject=${encodeURIComponent("CRA24 — risposta alla richiesta beta")}&body=${encodeURIComponent(`Buongiorno ${item.full_name},\n\ngrazie per la richiesta relativa a CRA24 e a ${item.company}.\n\n`)}`;
+            const reply = createMailtoLink(
+              item.email,
+              "CRA24 — risposta alla richiesta beta",
+              `Buongiorno ${item.full_name},\n\ngrazie per la richiesta relativa a CRA24 e a ${item.company}.\n\n`,
+            );
+            const invitation = createMailtoLink(
+              item.email,
+              "Accesso alla beta privata CRA24",
+              `Buongiorno ${item.full_name},\n\nla richiesta di ${item.company} è stata approvata.\n\nPuoi accedere alla sandbox CRA24 da questo indirizzo:\nhttps://cra24.kreluna.it/accesso\n\nUsa lo stesso indirizzo email professionale con cui hai richiesto la beta (${item.email}). Se non hai ancora un account ChatGPT, durante l’accesso potrai crearne uno. CRA24 non riceve né conserva la tua password.\n\nLa sandbox contiene esclusivamente dati sintetici: non inserire dati riservati o relativi a macchine reali.\n\nCordiali saluti,\nCRA24 by Kreluna`,
+            );
             return (
               <article key={item.id}>
                 <div className={styles.requestTop}>
@@ -96,9 +106,9 @@ export default async function RequestsPage() {
                       {accessActive ? "Revoca accesso" : "Approva sandbox"}
                     </button>
                   </form>
-                  <a className={styles.replyAction} href={reply}><Mail size={14} /> Rispondi via email</a>
-                  {accessActive && (
-                    <a className={styles.inviteAction} href={`mailto:${item.email}?subject=${encodeURIComponent("Accesso alla beta privata CRA24")}&body=${encodeURIComponent(`Buongiorno ${item.full_name},\n\nla richiesta di ${item.company} è stata approvata.\n\nPuoi accedere alla sandbox CRA24 da questo indirizzo:\nhttps://cra24.kreluna.it/accesso\n\nUsa lo stesso indirizzo email professionale con cui hai richiesto la beta (${item.email}). Se non hai ancora un account ChatGPT, durante l’accesso potrai crearne uno. CRA24 non riceve né conserva la tua password.\n\nLa sandbox contiene esclusivamente dati sintetici: non inserire dati riservati o relativi a macchine reali.\n\nCordiali saluti,\nCRA24 by Kreluna`)}`}>
+                  {reply && <a className={styles.replyAction} href={reply}><Mail size={14} /> Rispondi via email</a>}
+                  {accessActive && invitation && (
+                    <a className={styles.inviteAction} href={invitation}>
                       Invia istruzioni di accesso
                     </a>
                   )}

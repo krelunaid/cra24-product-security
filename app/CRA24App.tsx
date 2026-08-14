@@ -42,6 +42,7 @@ import {
   Zap,
 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { csvCell, safeDownloadName } from "../lib/security";
 
 type View =
   | "overview"
@@ -265,6 +266,7 @@ export function CRA24App({
   const [demoCompleteOpen, setDemoCompleteOpen] = useState(false);
   const [demoActions, setDemoActions] = useState<Record<number, boolean>>({});
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [workspaceWritable, setWorkspaceWritable] = useState(false);
   const [saveState, setSaveState] = useState<"loading" | "saved" | "saving" | "error">("loading");
   const [settings, setSettings] = useState({ humanApproval: true, escalation: true });
   const [tourCompleted, setTourCompleted] = useState(false);
@@ -298,6 +300,7 @@ export function CRA24App({
         }
         setSaveState("saved");
         setWorkspaceLoaded(true);
+        setWorkspaceWritable(true);
       })
       .catch(() => {
         if (!cancelled) {
@@ -309,7 +312,7 @@ export function CRA24App({
   }, []);
 
   useEffect(() => {
-    if (!workspaceLoaded) return;
+    if (!workspaceLoaded || !workspaceWritable) return;
     const persistableAssets = assets.map((asset) => ({
       id: asset.id,
       model: asset.model,
@@ -339,6 +342,13 @@ export function CRA24App({
             body: JSON.stringify({ revision: revisionRef.current, state }),
           });
           const result = await response.json() as { revision?: number; error?: string };
+          if (response.status === 409) {
+            saveQueuedRef.current = false;
+            setWorkspaceWritable(false);
+            setSaveState("error");
+            setToast("La sandbox è stata modificata in un’altra scheda. Ricarica la pagina prima di continuare.");
+            return;
+          }
           if (!response.ok) throw new Error(result.error || "Salvataggio non riuscito");
           revisionRef.current = Number(result.revision) || revisionRef.current + 1;
           setSaveState("saved");
@@ -356,7 +366,7 @@ export function CRA24App({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [incidents, assets, settings, demoWelcomeOpen, tourCompleted, workspaceLoaded]);
+  }, [incidents, assets, settings, demoWelcomeOpen, tourCompleted, workspaceLoaded, workspaceWritable]);
 
   useEffect(() => {
     if (!toast) return;
@@ -483,7 +493,7 @@ export function CRA24App({
       affectedAssets: assets.filter((asset) => asset.status !== "Non esposto"),
       evidenceStatus: "Human review required before submission",
     };
-    downloadFile(`CRA24-DEMO-${activeIncident.cve}-dossier.json`, JSON.stringify(payload, null, 2));
+    downloadFile(safeDownloadName(`CRA24-DEMO-${activeIncident.cve}-dossier`, "json"), JSON.stringify(payload, null, 2));
     notify("Dossier demo esportato: non certificato e non inviato");
   }
 
@@ -492,16 +502,29 @@ export function CRA24App({
       ["Seriale", "Modello", "Cliente", "Sito", "Release", "Esposizione", "Stato"],
       ...filteredAssets.map((asset) => [asset.id, asset.model, asset.customer, asset.site, asset.release, asset.exposure, asset.status]),
     ];
-    downloadFile("CRA24-DEMO-parco-installato.csv", rows.map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n"), "text/csv");
+    downloadFile("CRA24-DEMO-parco-installato.csv", `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`, "text/csv;charset=utf-8");
     notify("CSV demo esportato: contiene soltanto dati fittizi");
   }
 
   function importCsv(file?: File) {
     if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv") || file.size <= 0 || file.size > 1_000_000) {
+      notify("Seleziona un file CSV valido di massimo 1 MB");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result ?? "");
-      const lines = text.split(/\r?\n/).filter(Boolean).slice(1);
+      if (text.includes("\0")) {
+        notify("Il file non è un CSV di testo valido");
+        return;
+      }
+      const allLines = text.split(/\r?\n/).filter(Boolean);
+      if (allLines.length > 501) {
+        notify("Il file supera il limite di 500 righe della sandbox");
+        return;
+      }
+      const lines = allLines.slice(1);
       const imported: Asset[] = lines.map((line, index) => {
         const [id, model, customer, site, release, exposure] = line.split(",").map((value) => value.trim().replace(/^"|"$/g, ""));
         return {
@@ -520,6 +543,7 @@ export function CRA24App({
       }
       notify(`${imported.length} righe lette correttamente. Nella beta pubblica i dati reali non vengono conservati; l’importazione persistente viene attivata nel pilot.`);
     };
+    reader.onerror = () => notify("Non è stato possibile leggere il file CSV");
     reader.readAsText(file);
   }
 
@@ -685,7 +709,7 @@ export function CRA24App({
         </div>
       </main>
 
-      <input ref={importRef} className="hidden-input" type="file" accept=".csv,text/csv" onChange={(event) => importCsv(event.target.files?.[0])} />
+      <input ref={importRef} className="hidden-input" type="file" accept=".csv,text/csv" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; importCsv(file); }} />
 
       {newIncidentOpen && (
         <div className="modal-backdrop" role="presentation">

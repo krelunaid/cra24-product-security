@@ -17,6 +17,8 @@ export type BetaRequestRecord = {
   created_at: string;
 };
 
+const initializedDatabases = new WeakSet<object>();
+
 export function getBetaDatabase() {
   const database = (env as unknown as AppEnv).DB;
   if (!database) throw new Error("Il database delle richieste beta non è disponibile.");
@@ -24,6 +26,13 @@ export function getBetaDatabase() {
 }
 
 export async function ensureBetaSchema(database: D1Database) {
+  const key = database as unknown as object;
+  if (initializedDatabases.has(key)) return;
+  await initializeBetaSchema(database);
+  initializedDatabases.add(key);
+}
+
+async function initializeBetaSchema(database: D1Database) {
   await database.batch([
     database.prepare(`
       CREATE TABLE IF NOT EXISTS beta_requests (
@@ -53,5 +62,10 @@ export async function ensureBetaSchema(database: D1Database) {
       CREATE INDEX IF NOT EXISTS idx_beta_requests_status_created
       ON beta_requests(status, created_at)
     `),
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_beta_requests_created
+      ON beta_requests(created_at)
+    `),
   ]);
+  await database.prepare("UPDATE beta_requests SET email = lower(trim(email)) WHERE email != lower(trim(email))").run();
 }

@@ -29,6 +29,20 @@
       "when": 1786664449392,
       "tag": "0003_worthless_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786694069686,
+      "tag": "0004_cultured_starfox",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786694455189,
+      "tag": "0005_kind_phantom_reporter",
+      "breakpoints": true
     }
   ]
 }

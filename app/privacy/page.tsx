@@ -24,7 +24,7 @@ export default function PrivacyPage() {
             </section>
             <section>
               <h2>Dati trattati</h2>
-              <p>Trattiamo i dati inseriti nel modulo: nome, azienda, email professionale, ruolo, tipologia di prodotto, area di interesse, eventuale sito e descrizione del caso. Per i tester approvati trattiamo inoltre l’identificativo stabile e l’email restituiti dal servizio di accesso, l’azienda associata, lo stato dell’abilitazione, l’avanzamento della sandbox e i dati tecnici strettamente necessari a sicurezza e funzionamento.</p>
+              <p>Trattiamo i dati inseriti nel modulo: nome, azienda, email professionale, ruolo, tipologia di prodotto, area di interesse, eventuale sito e descrizione del caso. Per i tester approvati trattiamo inoltre l’identificativo stabile e l’email restituiti dal servizio di accesso, l’azienda associata, lo stato dell’abilitazione, l’avanzamento della sandbox e i dati tecnici strettamente necessari a sicurezza e funzionamento. Per limitare abusi conserviamo temporaneamente identificativi tecnici pseudonimizzati e un registro delle approvazioni amministrative.</p>
               <p>Solo dopo il tuo consenso, il Pixel Meta può trattare dati relativi al dispositivo, al browser, all’indirizzo IP, alla pagina visitata e alle interazioni essenziali per misurare la campagna. CRA24 registra gli eventi di visualizzazione pagina, apertura della candidatura e candidatura completata. Non inviamo a Meta nome, email, azienda, ruolo, descrizione del caso o altri contenuti del modulo.</p>
             </section>
             <section>
@@ -39,8 +39,8 @@ export default function PrivacyPage() {
             </section>
             <section>
               <h2>Cookie e misurazione pubblicitaria</h2>
-              <p>Il Pixel Meta non viene caricato e non invia eventi finché non scegli “Accetta” nel pannello dedicato. Puoi continuare a usare il sito scegliendo “Rifiuta”. La scelta viene conservata nel browser per ricordare la preferenza.</p>
-              <p>Puoi modificare o revocare la scelta in qualsiasi momento tramite il pulsante “Privacy e cookie” presente nelle pagine del sito. La revoca impedisce nuovi eventi; può essere necessario eliminare i cookie già presenti tramite le impostazioni del browser.</p>
+              <p>Il Pixel Meta non viene caricato e non invia eventi finché non scegli “Accetta” nel pannello dedicato. Puoi continuare a usare il sito scegliendo “Rifiuta”. La scelta viene conservata nel browser per ricordare la preferenza. Il Pixel è escluso tecnicamente dalle pagine di accesso, dalla sandbox privata, dall’area amministrativa e dalle API.</p>
+              <p>Puoi modificare o revocare la scelta in qualsiasi momento tramite il pulsante “Privacy e cookie” presente nelle pagine informative e promozionali. La revoca impedisce nuovi eventi; può essere necessario eliminare i cookie già presenti tramite le impostazioni del browser.</p>
             </section>
             <section>
               <h2>Conferimento e decisioni</h2>
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             </section>
             <section>
               <h2>Conservazione</h2>
-              <p>I dati relativi alla richiesta e alla sandbox beta vengono conservati per il tempo necessario alla valutazione e comunque non oltre 12 mesi dall’ultimo contatto o dalla disattivazione, salvo obblighi di legge. I dati usati per aggiornamenti vengono conservati fino alla revoca del consenso e sottoposti a verifica periodica.</p>
+              <p>I dati relativi alla richiesta e alla sandbox beta vengono conservati per il tempo necessario alla valutazione e cancellati durante la manutenzione periodica del servizio quando superano 12 mesi dall’ultimo utilizzo o dalla disattivazione, salvo obblighi di legge. Le abilitazioni scadono dopo 90 giorni; i dati tecnici antiabuso hanno durata breve e il registro amministrativo è eliminato dopo 12 mesi. Puoi chiedere la cancellazione anticipata in qualsiasi momento. I dati usati per aggiornamenti vengono conservati fino alla revoca del consenso e sottoposti a verifica periodica.</p>
             </section>
             <section>
               <h2>Destinatari e trasferimenti</h2>

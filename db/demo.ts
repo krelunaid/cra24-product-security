@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { isOwnerEmail, normalizeEmail, ownerEmail } from "./demo-logic";
+import { ensureSecuritySchema } from "./security";
 
 export { isOwnerEmail, normalizeEmail, ownerEmail } from "./demo-logic";
 
@@ -22,6 +23,14 @@ export type DemoWorkspaceRecord = {
   updated_at: string;
 };
 
+export type AdminAuditContext = {
+  actorUserId: string;
+  actorEmail: string;
+  requestId: string;
+};
+
+const initializedDatabases = new WeakSet<object>();
+
 export function getDemoDatabase() {
   const database = (env as unknown as AppEnv).DB;
   if (!database) throw new Error("Il database della demo CRA24 non è disponibile.");
@@ -29,6 +38,13 @@ export function getDemoDatabase() {
 }
 
 export async function ensureDemoSchema(database: D1Database) {
+  const key = database as unknown as object;
+  if (initializedDatabases.has(key)) return;
+  await initializeDemoSchema(database);
+  initializedDatabases.add(key);
+}
+
+async function initializeDemoSchema(database: D1Database) {
   await database.prepare(`
     CREATE TABLE IF NOT EXISTS demo_access (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,6 +106,19 @@ export async function ensureDemoSchema(database: D1Database) {
   if (!(workspaceColumns.results ?? []).some((column) => column.name === "revision")) {
     await database.prepare("ALTER TABLE demo_workspaces ADD COLUMN revision INTEGER NOT NULL DEFAULT 0").run();
   }
+
+  await ensureSecuritySchema(database);
+  await database.batch([
+    database.prepare(`
+      UPDATE demo_access
+      SET expires_at = datetime(updated_at, '+90 days')
+      WHERE status = 'active' AND expires_at IS NULL
+    `),
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_demo_access_expires
+      ON demo_access(expires_at)
+    `),
+  ]);
 }
 
 export async function getDemoAccess(database: D1Database, email: string, userId: string) {
@@ -101,11 +130,11 @@ export async function getDemoAccess(database: D1Database, email: string, userId:
     .prepare(`
       SELECT email, user_id, company, role, status, expires_at
       FROM demo_access
-      WHERE user_id = ?1 AND status = 'active'
-        AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+      WHERE user_id = ?1 AND email = ?2 AND status = 'active'
+        AND expires_at > CURRENT_TIMESTAMP
       LIMIT 1
     `)
-    .bind(userId)
+    .bind(userId, normalizeEmail(email))
     .first<DemoAccessRecord>();
   if (bound) return bound;
 
@@ -114,42 +143,55 @@ export async function getDemoAccess(database: D1Database, email: string, userId:
       SELECT email, user_id, company, role, status, expires_at
       FROM demo_access
       WHERE email = ?1 AND status = 'active' AND user_id IS NULL
-        AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+        AND expires_at > CURRENT_TIMESTAMP
       LIMIT 1
     `)
     .bind(normalizeEmail(email))
     .first<DemoAccessRecord>();
   if (!invited) return null;
 
-  await database
-    .prepare(`
+  await database.batch([
+    database
+      .prepare(`
+        UPDATE demo_access
+        SET user_id = NULL, status = 'revoked', updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?1 AND email != ?2
+      `)
+      .bind(userId, normalizeEmail(email)),
+    database
+      .prepare(`
       UPDATE demo_access
       SET user_id = ?1, updated_at = CURRENT_TIMESTAMP
       WHERE email = ?2 AND status = 'active' AND user_id IS NULL
-        AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-    `)
-    .bind(userId, normalizeEmail(email))
-    .run();
+        AND expires_at > CURRENT_TIMESTAMP
+      `)
+      .bind(userId, normalizeEmail(email)),
+  ]);
 
   return database
     .prepare(`
       SELECT email, user_id, company, role, status, expires_at
       FROM demo_access
-      WHERE user_id = ?1 AND status = 'active'
-        AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+      WHERE user_id = ?1 AND email = ?2 AND status = 'active'
+        AND expires_at > CURRENT_TIMESTAMP
       LIMIT 1
     `)
-    .bind(userId)
+    .bind(userId, normalizeEmail(email))
     .first<DemoAccessRecord>();
 }
 
-export async function setBetaAccess(database: D1Database, requestedEmail: string, enabled: boolean) {
+export async function setBetaAccess(
+  database: D1Database,
+  requestedEmail: string,
+  enabled: boolean,
+  audit: AdminAuditContext,
+) {
   const normalizedEmail = normalizeEmail(requestedEmail);
   const request = await database
     .prepare(`
       SELECT id, email, company, role
       FROM beta_requests
-      WHERE lower(trim(email)) = ?1
+      WHERE email = ?1
       ORDER BY created_at DESC, id DESC
       LIMIT 1
     `)
@@ -164,8 +206,19 @@ export async function setBetaAccess(database: D1Database, requestedEmail: string
 
   await database.batch([
     database
-      .prepare("UPDATE beta_requests SET status = ?1 WHERE lower(trim(email)) = ?2")
+      .prepare("UPDATE beta_requests SET status = ?1 WHERE email = ?2")
       .bind(status, email),
+    ...(enabled
+      ? [database
+          .prepare(`
+            UPDATE demo_access
+            SET user_id = NULL
+            WHERE email = ?1 AND (
+              status != 'active' OR expires_at IS NULL OR expires_at <= CURRENT_TIMESTAMP
+            )
+          `)
+          .bind(email)]
+      : []),
     database
       .prepare(`
         INSERT INTO demo_access (email, company, role, beta_request_id, status, expires_at, updated_at)
@@ -186,6 +239,20 @@ export async function setBetaAccess(database: D1Database, requestedEmail: string
             .prepare("UPDATE demo_access SET user_id = NULL WHERE email = ?1")
             .bind(email),
         ]),
+    database
+      .prepare(`
+        INSERT INTO admin_audit_log (
+          actor_user_id, actor_email, action, target_email, target_company, request_id
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+      `)
+      .bind(
+        audit.actorUserId,
+        normalizeEmail(audit.actorEmail),
+        enabled ? "approve_beta_access" : "revoke_beta_access",
+        email,
+        request.company,
+        audit.requestId,
+      ),
   ]);
 
   return { email, company: request.company, status };

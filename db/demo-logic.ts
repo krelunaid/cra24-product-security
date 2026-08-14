@@ -1,3 +1,5 @@
+import { cleanSingleLine, hasSameOrigin as hasExactSameOrigin, normalizeEmail as normalizeAddress } from "../lib/security.ts";
+
 export const ownerEmail = "andreagadducci@icloud.com";
 
 export const severities = new Set(["Critica", "Alta", "Media"]);
@@ -5,7 +7,7 @@ export const incidentStatuses = new Set(["Triage", "In corso", "Monitoraggio", "
 export const assetStatuses = new Set(["Da verificare", "Patch pianificata", "Mitigato", "Non esposto"]);
 
 export function normalizeEmail(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeAddress(value);
 }
 
 export function isOwnerEmail(value: string) {
@@ -13,7 +15,7 @@ export function isOwnerEmail(value: string) {
 }
 
 export function cleanString(value: unknown, maxLength: number) {
-  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+  return cleanSingleLine(value, maxLength);
 }
 
 export function cleanNumber(value: unknown, min: number, max: number) {
@@ -86,11 +88,6 @@ export function sanitizeDemoState(value: unknown) {
   return state;
 }
 
-export function hasSameOrigin(requestUrl: string, origin: string | null) {
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === new URL(requestUrl).host;
-  } catch {
-    return false;
-  }
+export function hasSameOrigin(requestUrl: string, origin: string | null, fetchSite?: string | null) {
+  return hasExactSameOrigin(requestUrl, origin, fetchSite);
 }
